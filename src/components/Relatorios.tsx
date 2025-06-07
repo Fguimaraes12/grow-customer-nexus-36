@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,72 +8,102 @@ import { DespesaModal } from "./modals/DespesaModal";
 import { FaturaModal } from "./modals/FaturaModal";
 
 export function Relatorios() {
-  const [expenses, setExpenses] = useState([
-    {
-      id: 1,
-      title: "Material de impressão",
-      date: "2024-06-01",
-      value: "- R$ 250.00",
-    },
-    {
-      id: 2,
-      title: "Energia elétrica",
-      date: "2024-06-03",
-      value: "- R$ 180.00",
-    },
-  ]);
+  const [expenses, setExpenses] = useState(() => {
+    const savedExpenses = localStorage.getItem('despesas');
+    return savedExpenses ? JSON.parse(savedExpenses) : [
+      {
+        id: 1,
+        title: "Material de impressão",
+        date: "2024-06-01",
+        value: "- R$ 250,00",
+      },
+      {
+        id: 2,
+        title: "Energia elétrica",
+        date: "2024-06-03",
+        value: "- R$ 180,00",
+      },
+    ];
+  });
 
-  const [revenues, setRevenues] = useState([
-    {
-      id: 1,
-      title: "Banner personalizado",
-      client: "João Silva",
-      date: "2024-06-02",
-      value: "+ R$ 120.00",
-    },
-    {
-      id: 2,
-      title: "Adesivos diversos",
-      client: "Maria Santos",
-      date: "2024-06-04",
-      value: "+ R$ 85.00",
-    },
-  ]);
+  const [revenues, setRevenues] = useState(() => {
+    const savedRevenues = localStorage.getItem('faturas');
+    return savedRevenues ? JSON.parse(savedRevenues) : [
+      {
+        id: 1,
+        title: "Banner personalizado",
+        client: "João Silva",
+        date: "2024-06-02",
+        value: "+ R$ 120,00",
+      },
+      {
+        id: 2,
+        title: "Adesivos diversos",
+        client: "Maria Santos",
+        date: "2024-06-04",
+        value: "+ R$ 85,00",
+      },
+    ];
+  });
 
   const [despesaModalOpen, setDespesaModalOpen] = useState(false);
   const [faturaModalOpen, setFaturaModalOpen] = useState(false);
   const [editingDespesa, setEditingDespesa] = useState(null);
   const [editingFatura, setEditingFatura] = useState(null);
 
+  // Salvar no localStorage quando os dados mudarem
+  useEffect(() => {
+    localStorage.setItem('despesas', JSON.stringify(expenses));
+  }, [expenses]);
+
+  useEffect(() => {
+    localStorage.setItem('faturas', JSON.stringify(revenues));
+  }, [revenues]);
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  const parseValue = (valueString: string) => {
+    // Remove todos os caracteres que não são números, vírgula ou ponto
+    const cleanValue = valueString.replace(/[^\d,.-]/g, '');
+    // Substitui vírgula por ponto para conversão
+    const numberValue = parseFloat(cleanValue.replace(',', '.'));
+    return isNaN(numberValue) ? 0 : numberValue;
+  };
+
   const calculateTotal = (items: any[], isExpense: boolean) => {
     return items.reduce((total, item) => {
-      const value = parseFloat(item.value.replace(/[^\d.,]/g, '').replace(',', '.'));
-      return total + (isExpense ? -value : value);
+      const value = parseValue(item.value);
+      return total + Math.abs(value); // Usar valor absoluto para evitar problemas com sinais
     }, 0);
   };
 
-  const totalExpenses = Math.abs(calculateTotal(expenses, true));
+  const totalExpenses = calculateTotal(expenses, true);
   const totalRevenues = calculateTotal(revenues, false);
   const netProfit = totalRevenues - totalExpenses;
 
   const financialStats = [
     {
       title: "Total Receitas",
-      value: `R$ ${totalRevenues.toFixed(2)}`,
+      value: formatCurrency(totalRevenues),
       icon: TrendingUp,
       iconBg: "bg-green-600",
       color: "text-green-400"
     },
     {
       title: "Total Despesas",
-      value: `R$ ${totalExpenses.toFixed(2)}`,
+      value: formatCurrency(totalExpenses),
       icon: TrendingDown,
       iconBg: "bg-red-600",
       color: "text-red-400"
     },
     {
       title: "Lucro Líquido",
-      value: `R$ ${netProfit.toFixed(2)}`,
+      value: formatCurrency(netProfit),
       icon: DollarSign,
       iconBg: netProfit >= 0 ? "bg-green-600" : "bg-red-600",
       color: netProfit >= 0 ? "text-green-400" : "text-red-400"

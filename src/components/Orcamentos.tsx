@@ -1,7 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
 import { OrcamentoModal } from "./modals/OrcamentoModal";
 
@@ -15,7 +17,7 @@ export function Orcamentos() {
         title: "Orçamento #1",
         client: "João Silva",
         date: "2024-06-05",
-        total: "R$ 380.00",
+        total: "R$ 380,00",
         status: "Rascunho",
         items: [
           { quantity: 2, name: "Banner 2x1m", price: "80.00" },
@@ -29,9 +31,9 @@ export function Orcamentos() {
   const [produtos] = useState(() => {
     const savedProducts = localStorage.getItem('produtos');
     return savedProducts ? JSON.parse(savedProducts) : [
-      { id: 1, name: "Banner 2x1m", price: "R$ 80.00" },
-      { id: 2, name: "Adesivo Vinil", price: "R$ 25.00" },
-      { id: 3, name: "Placa ACM", price: "R$ 150.00" },
+      { id: 1, name: "Banner 2x1m", price: "R$ 80,00" },
+      { id: 2, name: "Adesivo Vinil", price: "R$ 25,00" },
+      { id: 3, name: "Placa ACM", price: "R$ 150,00" },
     ];
   });
 
@@ -50,6 +52,17 @@ export function Orcamentos() {
     localStorage.setItem('orcamentos', JSON.stringify(budgets));
   }, [budgets]);
 
+  const formatCurrency = (value: string) => {
+    // Remove caracteres não numéricos e converte
+    const numericValue = parseFloat(value.replace(/[^\d.,]/g, '').replace(',', '.'));
+    if (isNaN(numericValue)) return value;
+    
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(numericValue);
+  };
+
   const handleSaveBudget = (budgetData: any) => {
     setBudgets([...budgets, budgetData]);
     
@@ -62,6 +75,28 @@ export function Orcamentos() {
     
     // Dispara um evento customizado para notificar outros componentes
     window.dispatchEvent(new CustomEvent('budgetCreated'));
+  };
+
+  const handleStatusChange = (budgetId: number, newStatus: string) => {
+    setBudgets(budgets.map(budget => 
+      budget.id === budgetId ? { ...budget, status: newStatus } : budget
+    ));
+    
+    // Dispara um evento customizado para notificar outros componentes
+    window.dispatchEvent(new CustomEvent('budgetCreated'));
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Rascunho':
+        return 'bg-yellow-600 text-white border-yellow-600';
+      case 'Finalizado':
+        return 'bg-green-600 text-white border-green-600';
+      case 'Aguardando':
+        return 'bg-blue-600 text-white border-blue-600';
+      default:
+        return 'bg-gray-600 text-white border-gray-600';
+    }
   };
 
   return (
@@ -86,9 +121,19 @@ export function Orcamentos() {
                 <div>
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="text-xl font-semibold text-white">{budget.title}</h3>
-                    <Badge variant="outline" className="bg-yellow-600 text-white border-yellow-600">
-                      {budget.status}
-                    </Badge>
+                    <Select
+                      value={budget.status}
+                      onValueChange={(value) => handleStatusChange(budget.id, value)}
+                    >
+                      <SelectTrigger className={`w-32 ${getStatusColor(budget.status)} border-none`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-crm-dark border-crm-border">
+                        <SelectItem value="Rascunho" className="text-white">Rascunho</SelectItem>
+                        <SelectItem value="Aguardando" className="text-white">Aguardando</SelectItem>
+                        <SelectItem value="Finalizado" className="text-white">Finalizado</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Button 
                       size="sm" 
                       variant="ghost" 
@@ -103,7 +148,7 @@ export function Orcamentos() {
                 </div>
                 <div className="text-right">
                   <p className="text-gray-400 text-sm">Total do Orçamento</p>
-                  <p className="text-2xl font-bold text-blue-400">{budget.total}</p>
+                  <p className="text-2xl font-bold text-blue-400">{formatCurrency(budget.total)}</p>
                 </div>
               </div>
               
@@ -113,7 +158,7 @@ export function Orcamentos() {
                   {budget.items.map((item, index) => (
                     <div key={index} className="flex justify-between text-gray-300">
                       <span>({item.quantity}x) - {item.name}</span>
-                      <span>R$ {(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
+                      <span>{formatCurrency((parseFloat(item.price) * item.quantity).toString())}</span>
                     </div>
                   ))}
                 </div>

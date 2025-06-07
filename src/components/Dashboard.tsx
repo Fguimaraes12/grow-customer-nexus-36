@@ -6,12 +6,19 @@ import { useState, useEffect } from "react";
 export function Dashboard() {
   const [dashboardData, setDashboardData] = useState({
     totalClientes: 0,
-    receitasDoMes: "R$ 0.00",
-    despesasDoMes: "R$ 0.00",
+    receitasDoMes: "R$ 0,00",
+    despesasDoMes: "R$ 0,00",
     orcamentosPendentes: 0,
     clientesRecentes: [],
     atividadesRecentes: []
   });
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
 
   const calculateDashboardData = () => {
     // Buscar dados do localStorage
@@ -28,14 +35,14 @@ export function Dashboard() {
 
     // Calcular receitas do mês (soma dos orçamentos)
     const receitasTotal = budgets.reduce((total, budget) => {
-      const value = budget.total.replace('R$ ', '').replace(',', '.');
-      return total + parseFloat(value);
+      const value = budget.total.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
+      return total + parseFloat(value) || 0;
     }, 0);
 
     // Calcular despesas do mês
     const despesasTotal = expenses.reduce((total, expense) => {
-      const value = expense.value ? expense.value.replace('R$ ', '').replace(',', '.') : 0;
-      return total + parseFloat(value);
+      const value = expense.value ? expense.value.replace('- R$ ', '').replace(/\./g, '').replace(',', '.') : '0';
+      return total + parseFloat(value) || 0;
     }, 0);
 
     // Contar orçamentos pendentes (status "Rascunho")
@@ -54,8 +61,8 @@ export function Dashboard() {
 
     setDashboardData({
       totalClientes,
-      receitasDoMes: `R$ ${receitasTotal.toFixed(2)}`,
-      despesasDoMes: `R$ ${despesasTotal.toFixed(2)}`,
+      receitasDoMes: formatCurrency(receitasTotal),
+      despesasDoMes: formatCurrency(despesasTotal),
       orcamentosPendentes,
       clientesRecentes,
       atividadesRecentes

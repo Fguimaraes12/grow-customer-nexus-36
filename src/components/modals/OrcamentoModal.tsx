@@ -19,6 +19,13 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, onSave 
   const [selectedClient, setSelectedClient] = useState("");
   const [items, setItems] = useState([{ product: "", quantity: 1, price: 0 }]);
 
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
   const addItem = () => {
     setItems([...items, { product: "", quantity: 1, price: 0 }]);
   };
@@ -35,7 +42,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, onSave 
       const selectedProduct = produtos.find(p => p.name === value);
       if (selectedProduct) {
         // Remove o "R$ " do preço e converte para número
-        const priceValue = selectedProduct.price.replace('R$ ', '').replace(',', '.');
+        const priceValue = selectedProduct.price.replace(/[^\d,]/g, '').replace(',', '.');
         newItems[index].price = parseFloat(priceValue);
       }
     }
@@ -44,7 +51,8 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, onSave 
   };
 
   const calculateTotal = () => {
-    return items.reduce((total, item) => total + (item.quantity * item.price), 0).toFixed(2);
+    const total = items.reduce((total, item) => total + (item.quantity * item.price), 0);
+    return formatCurrency(total);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -59,12 +67,14 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, onSave 
         price: item.price.toFixed(2)
       }));
 
+    const totalValue = items.reduce((total, item) => total + (item.quantity * item.price), 0);
+
     const orcamento = {
       id: Date.now(),
       title: `Orçamento #${Date.now()}`,
       client: selectedClient,
       date: new Date().toLocaleDateString('pt-BR'),
-      total: `R$ ${calculateTotal()}`,
+      total: formatCurrency(totalValue),
       status: "Rascunho",
       items: validItems,
     };
@@ -143,10 +153,10 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, onSave 
                     />
                   </div>
                   
-                  <div className="w-24">
+                  <div className="w-32">
                     <Label>Preço</Label>
                     <div className="text-white bg-crm-dark border border-crm-border rounded-md px-3 py-2 text-sm">
-                      R$ {item.price.toFixed(2)}
+                      {formatCurrency(item.price)}
                     </div>
                   </div>
                   
@@ -167,7 +177,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, onSave 
 
           <div className="flex justify-between items-center text-lg font-semibold">
             <span>Total do Orçamento:</span>
-            <span className="text-blue-400">R$ {calculateTotal()}</span>
+            <span className="text-blue-400">{calculateTotal()}</span>
           </div>
 
           <div className="flex justify-end gap-2">
