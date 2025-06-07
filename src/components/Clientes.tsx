@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,28 +6,37 @@ import { Search, Plus, Edit, Trash2, Users } from "lucide-react";
 import { ClienteModal } from "./modals/ClienteModal";
 
 export function Clientes() {
-  const [clients, setClients] = useState([
-    {
-      id: 1,
-      name: "João Silva",
-      phone: "(85) 99999-9999",
-      address: "Rua A, 123, Fortaleza-CE",
-      totalSpent: "R$ 120.00",
-      orders: 1,
-    },
-    {
-      id: 2,
-      name: "Maria Santos",
-      phone: "(85) 88888-8888",
-      address: "Av. B, 456, Fortaleza-CE",
-      totalSpent: "R$ 85.00",
-      orders: 1,
-    },
-  ]);
+  const [clients, setClients] = useState(() => {
+    // Carrega clientes do localStorage na inicialização
+    const savedClients = localStorage.getItem('clientes');
+    return savedClients ? JSON.parse(savedClients) : [
+      {
+        id: 1,
+        name: "João Silva",
+        phone: "(85) 99999-9999",
+        address: "Rua A, 123, Fortaleza-CE",
+        totalSpent: "R$ 120.00",
+        orders: 1,
+      },
+      {
+        id: 2,
+        name: "Maria Santos",
+        phone: "(85) 88888-8888",
+        address: "Av. B, 456, Fortaleza-CE",
+        totalSpent: "R$ 85.00",
+        orders: 1,
+      },
+    ];
+  });
 
   const [searchTerm, setSearchTerm] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
+
+  // Salva clientes no localStorage sempre que a lista muda
+  useEffect(() => {
+    localStorage.setItem('clientes', JSON.stringify(clients));
+  }, [clients]);
 
   const filteredClients = clients.filter(client =>
     client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
