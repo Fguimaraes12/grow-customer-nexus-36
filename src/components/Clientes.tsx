@@ -33,10 +33,62 @@ export function Clientes() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
 
+  // Função para calcular o total gasto e número de pedidos de um cliente
+  const calculateClientStats = (clientName: string) => {
+    const savedBudgets = localStorage.getItem('orcamentos');
+    const budgets = savedBudgets ? JSON.parse(savedBudgets) : [];
+    
+    const clientBudgets = budgets.filter(budget => budget.client === clientName);
+    const totalSpent = clientBudgets.reduce((total, budget) => {
+      // Remove "R$ " e converte para número
+      const value = budget.total.replace('R$ ', '').replace(',', '.');
+      return total + parseFloat(value);
+    }, 0);
+    
+    return {
+      totalSpent: `R$ ${totalSpent.toFixed(2)}`,
+      orders: clientBudgets.length
+    };
+  };
+
+  // Atualiza os dados dos clientes com informações dos orçamentos
+  const updateClientsWithBudgetData = () => {
+    setClients(currentClients => 
+      currentClients.map(client => {
+        const stats = calculateClientStats(client.name);
+        return {
+          ...client,
+          totalSpent: stats.totalSpent,
+          orders: stats.orders
+        };
+      })
+    );
+  };
+
   // Salva clientes no localStorage sempre que a lista muda
   useEffect(() => {
     localStorage.setItem('clientes', JSON.stringify(clients));
   }, [clients]);
+
+  // Atualiza os dados dos clientes quando o componente é montado ou quando há mudanças no localStorage
+  useEffect(() => {
+    updateClientsWithBudgetData();
+    
+    // Escuta mudanças no localStorage para sincronizar com orçamentos
+    const handleStorageChange = () => {
+      updateClientsWithBudgetData();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Também escuta um evento customizado para mudanças locais
+    window.addEventListener('budgetCreated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('budgetCreated', handleStorageChange);
+    };
+  }, []);
 
   const filteredClients = clients.filter(client =>
     client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

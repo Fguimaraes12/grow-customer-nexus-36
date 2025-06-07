@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,10 +52,16 @@ export function Orcamentos() {
 
   const handleSaveBudget = (budgetData: any) => {
     setBudgets([...budgets, budgetData]);
+    
+    // Dispara um evento customizado para notificar outros componentes
+    window.dispatchEvent(new CustomEvent('budgetCreated'));
   };
 
   const handleDeleteBudget = (budgetId: number) => {
     setBudgets(budgets.filter(budget => budget.id !== budgetId));
+    
+    // Dispara um evento customizado para notificar outros componentes
+    window.dispatchEvent(new CustomEvent('budgetCreated'));
   };
 
   return (
