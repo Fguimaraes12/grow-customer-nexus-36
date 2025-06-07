@@ -1,66 +1,107 @@
 
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, TrendingDown, DollarSign, Edit, Trash2, Plus } from "lucide-react";
-
-const financialStats = [
-  {
-    title: "Total Receitas",
-    value: "R$ 205.00",
-    icon: TrendingUp,
-    iconBg: "bg-green-600",
-    color: "text-green-400"
-  },
-  {
-    title: "Total Despesas",
-    value: "R$ 430.00",
-    icon: TrendingDown,
-    iconBg: "bg-red-600",
-    color: "text-red-400"
-  },
-  {
-    title: "Lucro Líquido",
-    value: "R$ -225.00",
-    icon: DollarSign,
-    iconBg: "bg-red-600",
-    color: "text-red-400"
-  },
-];
-
-const expenses = [
-  {
-    id: 1,
-    title: "Material de impressão",
-    date: "2024-06-01",
-    value: "- R$ 250.00",
-  },
-  {
-    id: 2,
-    title: "Energia elétrica",
-    date: "2024-06-03",
-    value: "- R$ 180.00",
-  },
-];
-
-const revenues = [
-  {
-    id: 1,
-    title: "Banner personalizado",
-    client: "João Silva",
-    date: "2024-06-02",
-    value: "+ R$ 120.00",
-  },
-  {
-    id: 2,
-    title: "Adesivos diversos",
-    client: "Maria Santos",
-    date: "2024-06-04",
-    value: "+ R$ 85.00",
-  },
-];
+import { DespesaModal } from "./modals/DespesaModal";
+import { FaturaModal } from "./modals/FaturaModal";
 
 export function Relatorios() {
+  const [expenses, setExpenses] = useState([
+    {
+      id: 1,
+      title: "Material de impressão",
+      date: "2024-06-01",
+      value: "- R$ 250.00",
+    },
+    {
+      id: 2,
+      title: "Energia elétrica",
+      date: "2024-06-03",
+      value: "- R$ 180.00",
+    },
+  ]);
+
+  const [revenues, setRevenues] = useState([
+    {
+      id: 1,
+      title: "Banner personalizado",
+      client: "João Silva",
+      date: "2024-06-02",
+      value: "+ R$ 120.00",
+    },
+    {
+      id: 2,
+      title: "Adesivos diversos",
+      client: "Maria Santos",
+      date: "2024-06-04",
+      value: "+ R$ 85.00",
+    },
+  ]);
+
+  const [despesaModalOpen, setDespesaModalOpen] = useState(false);
+  const [faturaModalOpen, setFaturaModalOpen] = useState(false);
+  const [editingDespesa, setEditingDespesa] = useState(null);
+  const [editingFatura, setEditingFatura] = useState(null);
+
+  const calculateTotal = (items: any[], isExpense: boolean) => {
+    return items.reduce((total, item) => {
+      const value = parseFloat(item.value.replace(/[^\d.,]/g, '').replace(',', '.'));
+      return total + (isExpense ? -value : value);
+    }, 0);
+  };
+
+  const totalExpenses = Math.abs(calculateTotal(expenses, true));
+  const totalRevenues = calculateTotal(revenues, false);
+  const netProfit = totalRevenues - totalExpenses;
+
+  const financialStats = [
+    {
+      title: "Total Receitas",
+      value: `R$ ${totalRevenues.toFixed(2)}`,
+      icon: TrendingUp,
+      iconBg: "bg-green-600",
+      color: "text-green-400"
+    },
+    {
+      title: "Total Despesas",
+      value: `R$ ${totalExpenses.toFixed(2)}`,
+      icon: TrendingDown,
+      iconBg: "bg-red-600",
+      color: "text-red-400"
+    },
+    {
+      title: "Lucro Líquido",
+      value: `R$ ${netProfit.toFixed(2)}`,
+      icon: DollarSign,
+      iconBg: netProfit >= 0 ? "bg-green-600" : "bg-red-600",
+      color: netProfit >= 0 ? "text-green-400" : "text-red-400"
+    },
+  ];
+
+  const handleSaveDespesa = (despesaData: any) => {
+    if (editingDespesa) {
+      setExpenses(expenses.map(expense => 
+        expense.id === editingDespesa.id ? despesaData : expense
+      ));
+      setEditingDespesa(null);
+    } else {
+      setExpenses([...expenses, despesaData]);
+    }
+  };
+
+  const handleSaveFatura = (faturaData: any) => {
+    if (editingFatura) {
+      setRevenues(revenues.map(revenue => 
+        revenue.id === editingFatura.id ? faturaData : revenue
+      ));
+      setEditingFatura(null);
+    } else {
+      setRevenues([...revenues, faturaData]);
+    }
+  };
+
   return (
     <div className="p-6 bg-crm-dark min-h-screen">
       <h1 className="text-3xl font-bold text-white mb-8">Relatórios Financeiros</h1>
@@ -100,7 +141,13 @@ export function Relatorios() {
             <TabsContent value="expenses" className="mt-6">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold text-white">Despesas</h3>
-                <Button className="bg-red-600 hover:bg-red-700">
+                <Button 
+                  onClick={() => {
+                    setEditingDespesa(null);
+                    setDespesaModalOpen(true);
+                  }}
+                  className="bg-red-600 hover:bg-red-700"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Nova Despesa
                 </Button>
@@ -116,10 +163,23 @@ export function Relatorios() {
                     <div className="flex items-center gap-4">
                       <p className="text-red-400 font-semibold">{expense.value}</p>
                       <div className="flex gap-2">
-                        <Button size="sm" variant="ghost" className="text-gray-400 hover:text-white">
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => {
+                            setEditingDespesa(expense);
+                            setDespesaModalOpen(true);
+                          }}
+                          className="text-gray-400 hover:text-white"
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="ghost" className="text-gray-400 hover:text-red-400">
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => setExpenses(expenses.filter(e => e.id !== expense.id))}
+                          className="text-gray-400 hover:text-red-400"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -132,7 +192,13 @@ export function Relatorios() {
             <TabsContent value="revenues" className="mt-6">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold text-white">Faturas</h3>
-                <Button className="bg-green-600 hover:bg-green-700">
+                <Button 
+                  onClick={() => {
+                    setEditingFatura(null);
+                    setFaturaModalOpen(true);
+                  }}
+                  className="bg-green-600 hover:bg-green-700"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Nova Fatura
                 </Button>
@@ -148,10 +214,23 @@ export function Relatorios() {
                     <div className="flex items-center gap-4">
                       <p className="text-green-400 font-semibold">{revenue.value}</p>
                       <div className="flex gap-2">
-                        <Button size="sm" variant="ghost" className="text-gray-400 hover:text-white">
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => {
+                            setEditingFatura(revenue);
+                            setFaturaModalOpen(true);
+                          }}
+                          className="text-gray-400 hover:text-white"
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="ghost" className="text-gray-400 hover:text-red-400">
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => setRevenues(revenues.filter(r => r.id !== revenue.id))}
+                          className="text-gray-400 hover:text-red-400"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -163,6 +242,20 @@ export function Relatorios() {
           </Tabs>
         </CardContent>
       </Card>
+
+      <DespesaModal
+        open={despesaModalOpen}
+        onOpenChange={setDespesaModalOpen}
+        despesa={editingDespesa}
+        onSave={handleSaveDespesa}
+      />
+
+      <FaturaModal
+        open={faturaModalOpen}
+        onOpenChange={setFaturaModalOpen}
+        fatura={editingFatura}
+        onSave={handleSaveFatura}
+      />
     </div>
   );
 }
