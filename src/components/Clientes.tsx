@@ -33,6 +33,27 @@ export function Clientes() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
 
+  const parseValue = (valueString: string) => {
+    // Remove tudo exceto números, vírgulas e pontos
+    let cleanValue = valueString.replace(/[^\d,.]/g, '');
+    
+    // Se contém vírgula, assumimos formato brasileiro (ex: 1.500,00)
+    if (cleanValue.includes(',')) {
+      // Remove pontos (separadores de milhares) e substitui vírgula por ponto
+      cleanValue = cleanValue.replace(/\./g, '').replace(',', '.');
+    }
+    
+    const numberValue = parseFloat(cleanValue);
+    return isNaN(numberValue) ? 0 : numberValue;
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
   // Função para calcular o total gasto e número de pedidos de um cliente
   const calculateClientStats = (clientName: string) => {
     const savedBudgets = localStorage.getItem('orcamentos');
@@ -40,13 +61,13 @@ export function Clientes() {
     
     const clientBudgets = budgets.filter(budget => budget.client === clientName);
     const totalSpent = clientBudgets.reduce((total, budget) => {
-      // Remove "R$ " e converte para número
-      const value = budget.total.replace('R$ ', '').replace(',', '.');
-      return total + parseFloat(value);
+      // Usar a função parseValue para converter corretamente
+      const value = parseValue(budget.total);
+      return total + value;
     }, 0);
     
     return {
-      totalSpent: `R$ ${totalSpent.toFixed(2)}`,
+      totalSpent: formatCurrency(totalSpent),
       orders: clientBudgets.length
     };
   };
