@@ -1,61 +1,111 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, DollarSign, TrendingUp, Calendar } from "lucide-react";
-
-const stats = [
-  {
-    title: "Total Clientes",
-    value: "2",
-    icon: Users,
-    iconBg: "bg-blue-600",
-  },
-  {
-    title: "Receitas do Mês",
-    value: "R$ 205.00",
-    icon: DollarSign,
-    iconBg: "bg-green-600",
-  },
-  {
-    title: "Despesas do Mês",
-    value: "R$ 430.00",
-    icon: TrendingUp,
-    iconBg: "bg-red-600",
-  },
-  {
-    title: "Orçamentos Pending",
-    value: "1",
-    icon: Calendar,
-    iconBg: "bg-yellow-600",
-  },
-];
-
-const recentClients = [
-  {
-    name: "João Silva",
-    phone: "(85) 99999-9999",
-  },
-  {
-    name: "Maria Santos",
-    phone: "(85) 88888-8888",
-  },
-];
-
-const recentActivity = [
-  {
-    title: "Banner personalizado",
-    client: "João Silva",
-    value: "R$ 120.00",
-    date: "2024-06-02",
-  },
-  {
-    title: "Adesivos diversos",
-    client: "Maria Santos",
-    value: "R$ 85.00",
-    date: "2024-06-04",
-  },
-];
+import { useState, useEffect } from "react";
 
 export function Dashboard() {
+  const [dashboardData, setDashboardData] = useState({
+    totalClientes: 0,
+    receitasDoMes: "R$ 0.00",
+    despesasDoMes: "R$ 0.00",
+    orcamentosPendentes: 0,
+    clientesRecentes: [],
+    atividadesRecentes: []
+  });
+
+  const calculateDashboardData = () => {
+    // Buscar dados do localStorage
+    const savedClients = localStorage.getItem('clientes');
+    const savedBudgets = localStorage.getItem('orcamentos');
+    const savedExpenses = localStorage.getItem('despesas') || '[]';
+
+    const clients = savedClients ? JSON.parse(savedClients) : [];
+    const budgets = savedBudgets ? JSON.parse(savedBudgets) : [];
+    const expenses = JSON.parse(savedExpenses);
+
+    // Calcular total de clientes
+    const totalClientes = clients.length;
+
+    // Calcular receitas do mês (soma dos orçamentos)
+    const receitasTotal = budgets.reduce((total, budget) => {
+      const value = budget.total.replace('R$ ', '').replace(',', '.');
+      return total + parseFloat(value);
+    }, 0);
+
+    // Calcular despesas do mês
+    const despesasTotal = expenses.reduce((total, expense) => {
+      const value = expense.value ? expense.value.replace('R$ ', '').replace(',', '.') : 0;
+      return total + parseFloat(value);
+    }, 0);
+
+    // Contar orçamentos pendentes (status "Rascunho")
+    const orcamentosPendentes = budgets.filter(budget => budget.status === 'Rascunho').length;
+
+    // Pegar os 2 clientes mais recentes
+    const clientesRecentes = clients.slice(-2).reverse();
+
+    // Criar atividades recentes baseadas nos orçamentos
+    const atividadesRecentes = budgets.slice(-2).reverse().map(budget => ({
+      title: budget.title || 'Orçamento',
+      client: budget.client,
+      value: budget.total,
+      date: budget.date
+    }));
+
+    setDashboardData({
+      totalClientes,
+      receitasDoMes: `R$ ${receitasTotal.toFixed(2)}`,
+      despesasDoMes: `R$ ${despesasTotal.toFixed(2)}`,
+      orcamentosPendentes,
+      clientesRecentes,
+      atividadesRecentes
+    });
+  };
+
+  useEffect(() => {
+    calculateDashboardData();
+
+    // Escutar mudanças nos dados
+    const handleDataChange = () => {
+      calculateDashboardData();
+    };
+
+    window.addEventListener('storage', handleDataChange);
+    window.addEventListener('budgetCreated', handleDataChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleDataChange);
+      window.removeEventListener('budgetCreated', handleDataChange);
+    };
+  }, []);
+
+  const stats = [
+    {
+      title: "Total Clientes",
+      value: dashboardData.totalClientes.toString(),
+      icon: Users,
+      iconBg: "bg-blue-600",
+    },
+    {
+      title: "Receitas do Mês",
+      value: dashboardData.receitasDoMes,
+      icon: DollarSign,
+      iconBg: "bg-green-600",
+    },
+    {
+      title: "Despesas do Mês",
+      value: dashboardData.despesasDoMes,
+      icon: TrendingUp,
+      iconBg: "bg-red-600",
+    },
+    {
+      title: "Orçamentos Pendentes",
+      value: dashboardData.orcamentosPendentes.toString(),
+      icon: Calendar,
+      iconBg: "bg-yellow-600",
+    },
+  ];
+
   return (
     <div className="p-6 bg-crm-dark min-h-screen">
       <h1 className="text-3xl font-bold text-white mb-8">Dashboard</h1>
@@ -86,17 +136,21 @@ export function Dashboard() {
           <CardContent className="p-6">
             <h3 className="text-xl font-semibold text-white mb-4">Clientes Recentes</h3>
             <div className="space-y-4">
-              {recentClients.map((client, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                    <Users className="h-5 w-5 text-white" />
+              {dashboardData.clientesRecentes.length > 0 ? (
+                dashboardData.clientesRecentes.map((client, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                      <Users className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">{client.name}</p>
+                      <p className="text-gray-400 text-sm">{client.phone}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-white font-medium">{client.name}</p>
-                    <p className="text-gray-400 text-sm">{client.phone}</p>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-gray-400">Nenhum cliente cadastrado ainda</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -106,18 +160,22 @@ export function Dashboard() {
           <CardContent className="p-6">
             <h3 className="text-xl font-semibold text-white mb-4">Atividade Recente</h3>
             <div className="space-y-4">
-              {recentActivity.map((activity, index) => (
-                <div key={index} className="flex justify-between items-start">
-                  <div>
-                    <p className="text-white font-medium">{activity.title}</p>
-                    <p className="text-gray-400 text-sm">{activity.client}</p>
+              {dashboardData.atividadesRecentes.length > 0 ? (
+                dashboardData.atividadesRecentes.map((activity, index) => (
+                  <div key={index} className="flex justify-between items-start">
+                    <div>
+                      <p className="text-white font-medium">{activity.title}</p>
+                      <p className="text-gray-400 text-sm">{activity.client}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-green-400 font-semibold">{activity.value}</p>
+                      <p className="text-gray-400 text-sm">{activity.date}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-green-400 font-semibold">{activity.value}</p>
-                    <p className="text-gray-400 text-sm">{activity.date}</p>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-gray-400">Nenhuma atividade registrada ainda</p>
+              )}
             </div>
           </CardContent>
         </Card>
