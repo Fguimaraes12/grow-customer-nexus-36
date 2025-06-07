@@ -52,9 +52,22 @@ export function Orcamentos() {
     localStorage.setItem('orcamentos', JSON.stringify(budgets));
   }, [budgets]);
 
-  const formatCurrency = (value: string) => {
-    // Remove caracteres não numéricos e converte
-    const numericValue = parseFloat(value.replace(/[^\d.,]/g, '').replace(',', '.'));
+  const formatCurrency = (value: any) => {
+    // Se já está formatado como string, retorna como está
+    if (typeof value === 'string' && value.includes('R$')) {
+      return value;
+    }
+    
+    // Se é número, formata
+    if (typeof value === 'number') {
+      return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      }).format(value);
+    }
+    
+    // Se é string com número, converte e formata
+    const numericValue = parseFloat(value.toString().replace(/[^\d.,]/g, '').replace(',', '.'));
     if (isNaN(numericValue)) return value;
     
     return new Intl.NumberFormat('pt-BR', {
@@ -158,7 +171,7 @@ export function Orcamentos() {
                   {budget.items.map((item, index) => (
                     <div key={index} className="flex justify-between text-gray-300">
                       <span>({item.quantity}x) - {item.name}</span>
-                      <span>{formatCurrency((parseFloat(item.price) * item.quantity).toString())}</span>
+                      <span>{formatCurrency(parseFloat(item.price) * item.quantity)}</span>
                     </div>
                   ))}
                 </div>

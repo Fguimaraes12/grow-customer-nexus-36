@@ -20,6 +20,20 @@ export function Dashboard() {
     }).format(value);
   };
 
+  const parseValue = (valueString: string) => {
+    // Remove tudo exceto números, vírgulas e pontos
+    let cleanValue = valueString.replace(/[^\d,.]/g, '');
+    
+    // Se contém vírgula, assumimos formato brasileiro (ex: 1.500,00)
+    if (cleanValue.includes(',')) {
+      // Remove pontos (separadores de milhares) e substitui vírgula por ponto
+      cleanValue = cleanValue.replace(/\./g, '').replace(',', '.');
+    }
+    
+    const numberValue = parseFloat(cleanValue);
+    return isNaN(numberValue) ? 0 : numberValue;
+  };
+
   const calculateDashboardData = () => {
     // Buscar dados do localStorage
     const savedClients = localStorage.getItem('clientes');
@@ -33,16 +47,16 @@ export function Dashboard() {
     // Calcular total de clientes
     const totalClientes = clients.length;
 
-    // Calcular receitas do mês (soma dos orçamentos)
+    // Calcular receitas do mês (soma dos orçamentos) - usando a função parseValue corrigida
     const receitasTotal = budgets.reduce((total, budget) => {
-      const value = budget.total.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
-      return total + parseFloat(value) || 0;
+      const value = parseValue(budget.total);
+      return total + value;
     }, 0);
 
     // Calcular despesas do mês
     const despesasTotal = expenses.reduce((total, expense) => {
-      const value = expense.value ? expense.value.replace('- R$ ', '').replace(/\./g, '').replace(',', '.') : '0';
-      return total + parseFloat(value) || 0;
+      const value = parseValue(expense.value);
+      return total + value;
     }, 0);
 
     // Contar orçamentos pendentes (status "Rascunho")

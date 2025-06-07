@@ -26,6 +26,20 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, onSave 
     }).format(value);
   };
 
+  const parsePrice = (priceString: string) => {
+    // Remove tudo exceto números, vírgulas e pontos
+    let cleanValue = priceString.replace(/[^\d,.]/g, '');
+    
+    // Se contém vírgula, assumimos formato brasileiro (ex: 1.500,00)
+    if (cleanValue.includes(',')) {
+      // Remove pontos (separadores de milhares) e substitui vírgula por ponto
+      cleanValue = cleanValue.replace(/\./g, '').replace(',', '.');
+    }
+    
+    const numberValue = parseFloat(cleanValue);
+    return isNaN(numberValue) ? 0 : numberValue;
+  };
+
   const addItem = () => {
     setItems([...items, { product: "", quantity: 1, price: 0 }]);
   };
@@ -41,9 +55,9 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, onSave 
     if (field === "product") {
       const selectedProduct = produtos.find(p => p.name === value);
       if (selectedProduct) {
-        // Remove o "R$ " do preço e converte para número
-        const priceValue = selectedProduct.price.replace(/[^\d,]/g, '').replace(',', '.');
-        newItems[index].price = parseFloat(priceValue);
+        // Usar a função parsePrice para converter o preço
+        const priceValue = parsePrice(selectedProduct.price);
+        newItems[index].price = priceValue;
       }
     }
     
@@ -74,7 +88,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, onSave 
       title: `Orçamento #${Date.now()}`,
       client: selectedClient,
       date: new Date().toLocaleDateString('pt-BR'),
-      total: formatCurrency(totalValue),
+      total: formatCurrency(totalValue), // Salva já formatado
       status: "Rascunho",
       items: validItems,
     };
