@@ -15,13 +15,35 @@ interface ProdutoModalProps {
 export function ProdutoModal({ open, onOpenChange, produto, onSave }: ProdutoModalProps) {
   const [formData, setFormData] = useState({
     name: produto?.name || "",
-    price: produto?.price || "",
+    price: produto?.price ? produto.price.replace('R$ ', '').replace('.', '').replace(',', '.') : "",
   });
+
+  const formatPrice = (value: string) => {
+    // Remove tudo que não for número
+    const numbers = value.replace(/\D/g, '');
+    
+    if (!numbers) return '';
+    
+    // Converte para número e formata
+    const numberValue = parseFloat(numbers) / 100;
+    
+    return numberValue.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const formattedValue = formatPrice(value);
+    setFormData({ ...formData, price: formattedValue });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
       ...formData,
+      price: `R$ ${formData.price}`,
       id: produto?.id || Date.now(),
     });
     onOpenChange(false);
@@ -47,14 +69,19 @@ export function ProdutoModal({ open, onOpenChange, produto, onSave }: ProdutoMod
           </div>
           <div>
             <Label htmlFor="price">Preço</Label>
-            <Input
-              id="price"
-              value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-              className="bg-crm-dark border-crm-border text-white"
-              placeholder="R$ 0.00"
-              required
-            />
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
+                R$
+              </span>
+              <Input
+                id="price"
+                value={formData.price}
+                onChange={handlePriceChange}
+                className="bg-crm-dark border-crm-border text-white pl-10"
+                placeholder="0,00"
+                required
+              />
+            </div>
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

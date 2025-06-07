@@ -15,16 +15,37 @@ interface DespesaModalProps {
 export function DespesaModal({ open, onOpenChange, despesa, onSave }: DespesaModalProps) {
   const [formData, setFormData] = useState({
     title: despesa?.title || "",
-    value: despesa?.value || "",
+    value: despesa?.value ? despesa.value.replace('- R$ ', '').replace('.', '').replace(',', '.') : "",
     date: despesa?.date || new Date().toISOString().split('T')[0],
   });
+
+  const formatPrice = (value: string) => {
+    // Remove tudo que não for número
+    const numbers = value.replace(/\D/g, '');
+    
+    if (!numbers) return '';
+    
+    // Converte para número e formata
+    const numberValue = parseFloat(numbers) / 100;
+    
+    return numberValue.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
+  const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const formattedValue = formatPrice(value);
+    setFormData({ ...formData, value: formattedValue });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
       ...formData,
       id: despesa?.id || Date.now(),
-      value: formData.value.startsWith('- R$') ? formData.value : `- R$ ${formData.value}`,
+      value: `- R$ ${formData.value}`,
     });
     onOpenChange(false);
     setFormData({ title: "", value: "", date: new Date().toISOString().split('T')[0] });
@@ -49,14 +70,19 @@ export function DespesaModal({ open, onOpenChange, despesa, onSave }: DespesaMod
           </div>
           <div>
             <Label htmlFor="value">Valor</Label>
-            <Input
-              id="value"
-              value={formData.value}
-              onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-              className="bg-crm-dark border-crm-border text-white"
-              placeholder="250.00"
-              required
-            />
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
+                R$
+              </span>
+              <Input
+                id="value"
+                value={formData.value}
+                onChange={handleValueChange}
+                className="bg-crm-dark border-crm-border text-white pl-10"
+                placeholder="0,00"
+                required
+              />
+            </div>
           </div>
           <div>
             <Label htmlFor="date">Data</Label>

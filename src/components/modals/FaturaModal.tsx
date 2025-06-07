@@ -16,16 +16,37 @@ export function FaturaModal({ open, onOpenChange, fatura, onSave }: FaturaModalP
   const [formData, setFormData] = useState({
     title: fatura?.title || "",
     client: fatura?.client || "",
-    value: fatura?.value || "",
+    value: fatura?.value ? fatura.value.replace('+ R$ ', '').replace('.', '').replace(',', '.') : "",
     date: fatura?.date || new Date().toISOString().split('T')[0],
   });
+
+  const formatPrice = (value: string) => {
+    // Remove tudo que não for número
+    const numbers = value.replace(/\D/g, '');
+    
+    if (!numbers) return '';
+    
+    // Converte para número e formata
+    const numberValue = parseFloat(numbers) / 100;
+    
+    return numberValue.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
+  const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const formattedValue = formatPrice(value);
+    setFormData({ ...formData, value: formattedValue });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
       ...formData,
       id: fatura?.id || Date.now(),
-      value: formData.value.startsWith('+ R$') ? formData.value : `+ R$ ${formData.value}`,
+      value: `+ R$ ${formData.value}`,
     });
     onOpenChange(false);
     setFormData({ title: "", client: "", value: "", date: new Date().toISOString().split('T')[0] });
@@ -60,14 +81,19 @@ export function FaturaModal({ open, onOpenChange, fatura, onSave }: FaturaModalP
           </div>
           <div>
             <Label htmlFor="value">Valor</Label>
-            <Input
-              id="value"
-              value={formData.value}
-              onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-              className="bg-crm-dark border-crm-border text-white"
-              placeholder="120.00"
-              required
-            />
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
+                R$
+              </span>
+              <Input
+                id="value"
+                value={formData.value}
+                onChange={handleValueChange}
+                className="bg-crm-dark border-crm-border text-white pl-10"
+                placeholder="0,00"
+                required
+              />
+            </div>
           </div>
           <div>
             <Label htmlFor="date">Data</Label>
