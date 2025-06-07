@@ -68,10 +68,16 @@ export function Relatorios() {
   };
 
   const parseValue = (valueString: string) => {
-    // Remove todos os caracteres que não são números, vírgula ou ponto
-    const cleanValue = valueString.replace(/[^\d,.-]/g, '');
-    // Substitui vírgula por ponto para conversão
-    const numberValue = parseFloat(cleanValue.replace(',', '.'));
+    // Remove tudo exceto números, vírgulas e pontos
+    let cleanValue = valueString.replace(/[^\d,.]/g, '');
+    
+    // Se contém vírgula, assumimos formato brasileiro (ex: 1.500,00)
+    if (cleanValue.includes(',')) {
+      // Remove pontos (separadores de milhares) e substitui vírgula por ponto
+      cleanValue = cleanValue.replace(/\./g, '').replace(',', '.');
+    }
+    
+    const numberValue = parseFloat(cleanValue);
     return isNaN(numberValue) ? 0 : numberValue;
   };
 
