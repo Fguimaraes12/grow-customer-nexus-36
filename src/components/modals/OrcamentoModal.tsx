@@ -34,7 +34,9 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, onSave 
     if (field === "product") {
       const selectedProduct = produtos.find(p => p.name === value);
       if (selectedProduct) {
-        newItems[index].price = parseFloat(selectedProduct.price.replace('R$ ', ''));
+        // Remove o "R$ " do preço e converte para número
+        const priceValue = selectedProduct.price.replace('R$ ', '').replace(',', '.');
+        newItems[index].price = parseFloat(priceValue);
       }
     }
     
@@ -47,17 +49,31 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, onSave 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const selectedClientData = clientes.find(c => c.name === selectedClient);
-    onSave({
+    
+    // Filtra apenas itens com produtos selecionados e converte para o formato correto
+    const validItems = items
+      .filter(item => item.product && item.quantity > 0)
+      .map(item => ({
+        quantity: item.quantity,
+        name: item.product,
+        price: item.price.toFixed(2)
+      }));
+
+    const orcamento = {
       id: Date.now(),
       title: `Orçamento #${Date.now()}`,
       client: selectedClient,
       date: new Date().toLocaleDateString('pt-BR'),
       total: `R$ ${calculateTotal()}`,
       status: "Rascunho",
-      items: items.filter(item => item.product),
-    });
+      items: validItems,
+    };
+
+    console.log('Salvando orçamento:', orcamento);
+    onSave(orcamento);
     onOpenChange(false);
+    
+    // Reset form
     setSelectedClient("");
     setItems([{ product: "", quantity: 1, price: 0 }]);
   };
@@ -109,7 +125,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, onSave 
                       <SelectContent className="bg-crm-dark border-crm-border">
                         {produtos.map((produto) => (
                           <SelectItem key={produto.id} value={produto.name} className="text-white">
-                            {produto.name}
+                            {produto.name} - {produto.price}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -122,7 +138,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, onSave 
                       type="number"
                       min="1"
                       value={item.quantity}
-                      onChange={(e) => updateItem(index, "quantity", parseInt(e.target.value))}
+                      onChange={(e) => updateItem(index, "quantity", parseInt(e.target.value) || 1)}
                       className="bg-crm-dark border-crm-border text-white"
                     />
                   </div>
@@ -140,6 +156,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, onSave 
                     variant="ghost"
                     onClick={() => removeItem(index)}
                     className="text-red-400 hover:text-red-300"
+                    disabled={items.length === 1}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

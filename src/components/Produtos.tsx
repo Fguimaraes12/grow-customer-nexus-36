@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,27 +7,36 @@ import { Search, Plus, Edit, Trash2, FileText } from "lucide-react";
 import { ProdutoModal } from "./modals/ProdutoModal";
 
 export function Produtos() {
-  const [products, setProducts] = useState([
-    {
-      id: 1,
-      name: "Banner 2x1m",
-      price: "R$ 80.00",
-    },
-    {
-      id: 2,
-      name: "Adesivo Vinil",
-      price: "R$ 25.00",
-    },
-    {
-      id: 3,
-      name: "Placa ACM",
-      price: "R$ 150.00",
-    },
-  ]);
+  const [products, setProducts] = useState(() => {
+    // Carrega produtos do localStorage na inicialização
+    const savedProducts = localStorage.getItem('produtos');
+    return savedProducts ? JSON.parse(savedProducts) : [
+      {
+        id: 1,
+        name: "Banner 2x1m",
+        price: "R$ 80.00",
+      },
+      {
+        id: 2,
+        name: "Adesivo Vinil",
+        price: "R$ 25.00",
+      },
+      {
+        id: 3,
+        name: "Placa ACM",
+        price: "R$ 150.00",
+      },
+    ];
+  });
 
   const [searchTerm, setSearchTerm] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+
+  // Salva produtos no localStorage sempre que a lista muda
+  useEffect(() => {
+    localStorage.setItem('produtos', JSON.stringify(products));
+  }, [products]);
 
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())

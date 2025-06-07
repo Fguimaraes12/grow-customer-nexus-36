@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,34 +7,49 @@ import { Plus, Trash2 } from "lucide-react";
 import { OrcamentoModal } from "./modals/OrcamentoModal";
 
 export function Orcamentos() {
-  const [budgets, setBudgets] = useState([
-    {
-      id: 1,
-      title: "Orçamento #1",
-      client: "João Silva",
-      date: "2024-06-05",
-      total: "R$ 380.00",
-      status: "Rascunho",
-      items: [
-        { quantity: 2, name: "Banner 2x1m", price: "80.00" },
-        { quantity: 1, name: "Placa ACM", price: "150.00" },
-      ],
-    },
-  ]);
+  const [budgets, setBudgets] = useState(() => {
+    // Carrega orçamentos do localStorage na inicialização
+    const savedBudgets = localStorage.getItem('orcamentos');
+    return savedBudgets ? JSON.parse(savedBudgets) : [
+      {
+        id: 1,
+        title: "Orçamento #1",
+        client: "João Silva",
+        date: "2024-06-05",
+        total: "R$ 380.00",
+        status: "Rascunho",
+        items: [
+          { quantity: 2, name: "Banner 2x1m", price: "80.00" },
+          { quantity: 1, name: "Placa ACM", price: "150.00" },
+        ],
+      },
+    ];
+  });
 
-  // Dados mockados para clientes e produtos
-  const clientes = [
-    { id: 1, name: "João Silva" },
-    { id: 2, name: "Maria Santos" },
-  ];
+  // Carrega produtos e clientes do localStorage
+  const [produtos] = useState(() => {
+    const savedProducts = localStorage.getItem('produtos');
+    return savedProducts ? JSON.parse(savedProducts) : [
+      { id: 1, name: "Banner 2x1m", price: "R$ 80.00" },
+      { id: 2, name: "Adesivo Vinil", price: "R$ 25.00" },
+      { id: 3, name: "Placa ACM", price: "R$ 150.00" },
+    ];
+  });
 
-  const produtos = [
-    { id: 1, name: "Banner 2x1m", price: "R$ 80.00" },
-    { id: 2, name: "Adesivo Vinil", price: "R$ 25.00" },
-    { id: 3, name: "Placa ACM", price: "R$ 150.00" },
-  ];
+  const [clientes] = useState(() => {
+    const savedClients = localStorage.getItem('clientes');
+    return savedClients ? JSON.parse(savedClients) : [
+      { id: 1, name: "João Silva" },
+      { id: 2, name: "Maria Santos" },
+    ];
+  });
 
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Salva orçamentos no localStorage sempre que a lista muda
+  useEffect(() => {
+    localStorage.setItem('orcamentos', JSON.stringify(budgets));
+  }, [budgets]);
 
   const handleSaveBudget = (budgetData: any) => {
     setBudgets([...budgets, budgetData]);
