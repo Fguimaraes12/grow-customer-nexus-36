@@ -29,6 +29,10 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+// Credenciais fixas
+const ADMIN_LOGIN = "admin";
+const ADMIN_PASSWORD = "admin";
+
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,15 +49,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
-    // Simular login (aqui você integraria com Supabase)
+    // Simular delay de login
     return new Promise((resolve) => {
       setTimeout(() => {
-        // Simular validação de credenciais
-        if (email && password) {
+        // Validar credenciais fixas
+        if (email === ADMIN_LOGIN && password === ADMIN_PASSWORD) {
           const mockUser: User = {
             id: '1',
-            email: email,
-            name: 'Proprietário'
+            email: 'admin@fortal.com',
+            name: 'Administrador'
           };
           setUser(mockUser);
           localStorage.setItem('user', JSON.stringify(mockUser));

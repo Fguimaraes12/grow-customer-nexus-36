@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LogIn, Eye, EyeOff } from "lucide-react";
+import { LogIn, Eye, EyeOff, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
@@ -34,7 +34,7 @@ export function LoginPanel() {
     } else {
       toast({
         title: "Erro no login",
-        description: "Verifique suas credenciais e tente novamente",
+        description: "Credenciais inválidas. Use: admin / admin",
         variant: "destructive",
       });
     }
@@ -55,13 +55,24 @@ export function LoginPanel() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <div className="flex items-center gap-2 text-blue-800">
+              <Info className="h-4 w-4" />
+              <span className="text-sm font-medium">Credenciais de teste:</span>
+            </div>
+            <div className="text-sm text-blue-700 mt-1">
+              <div>Login: <strong>admin</strong></div>
+              <div>Senha: <strong>admin</strong></div>
+            </div>
+          </div>
+          
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Login</Label>
               <Input
                 id="email"
-                type="email"
-                placeholder="seu@email.com"
+                type="text"
+                placeholder="Digite seu login"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -101,17 +112,6 @@ export function LoginPanel() {
               {isLoading ? "Entrando..." : "Entrar"}
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm">
-            <a href="#" className="text-primary hover:underline">
-              Esqueceu sua senha?
-            </a>
-          </div>
-          <div className="mt-2 text-center text-sm text-muted-foreground">
-            Não tem uma conta?{" "}
-            <a href="#" className="text-primary hover:underline">
-              Cadastre-se
-            </a>
-          </div>
         </CardContent>
       </Card>
     </div>
