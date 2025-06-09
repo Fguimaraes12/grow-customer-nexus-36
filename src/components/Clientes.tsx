@@ -1,9 +1,11 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Plus, Edit, Trash2, Users } from "lucide-react";
 import { ClienteModal } from "./modals/ClienteModal";
+import { useLogs } from "@/contexts/LogsContext";
 
 export function Clientes() {
   const [clients, setClients] = useState(() => {
@@ -32,6 +34,7 @@ export function Clientes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
+  const { addLog } = useLogs();
 
   const parseValue = (valueString: string) => {
     // Remove tudo exceto números, vírgulas e pontos
@@ -122,9 +125,11 @@ export function Clientes() {
       setClients(clients.map(client => 
         client.id === editingClient.id ? clientData : client
       ));
+      addLog('edit', 'cliente', clientData.name);
       setEditingClient(null);
     } else {
       setClients([...clients, clientData]);
+      addLog('create', 'cliente', clientData.name);
     }
   };
 
@@ -134,7 +139,11 @@ export function Clientes() {
   };
 
   const handleDeleteClient = (clientId: number) => {
-    setClients(clients.filter(client => client.id !== clientId));
+    const client = clients.find(c => c.id === clientId);
+    if (client) {
+      setClients(clients.filter(client => client.id !== clientId));
+      addLog('delete', 'cliente', client.name);
+    }
   };
 
   const handleNewClient = () => {

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
 import { OrcamentoModal } from "./modals/OrcamentoModal";
+import { useLogs } from "@/contexts/LogsContext";
 
 export function Orcamentos() {
   const [budgets, setBudgets] = useState(() => {
@@ -46,6 +47,7 @@ export function Orcamentos() {
   });
 
   const [modalOpen, setModalOpen] = useState(false);
+  const { addLog } = useLogs();
 
   // Salva orçamentos no localStorage sempre que a lista muda
   useEffect(() => {
@@ -78,25 +80,34 @@ export function Orcamentos() {
 
   const handleSaveBudget = (budgetData: any) => {
     setBudgets([...budgets, budgetData]);
+    addLog('create', 'orcamento', budgetData.title, `Cliente: ${budgetData.client} - Total: ${budgetData.total}`);
     
     // Dispara um evento customizado para notificar outros componentes
     window.dispatchEvent(new CustomEvent('budgetCreated'));
   };
 
   const handleDeleteBudget = (budgetId: number) => {
-    setBudgets(budgets.filter(budget => budget.id !== budgetId));
-    
-    // Dispara um evento customizado para notificar outros componentes
-    window.dispatchEvent(new CustomEvent('budgetCreated'));
+    const budget = budgets.find(b => b.id === budgetId);
+    if (budget) {
+      setBudgets(budgets.filter(budget => budget.id !== budgetId));
+      addLog('delete', 'orcamento', budget.title, `Cliente: ${budget.client}`);
+      
+      // Dispara um evento customizado para notificar outros componentes
+      window.dispatchEvent(new CustomEvent('budgetCreated'));
+    }
   };
 
   const handleStatusChange = (budgetId: number, newStatus: string) => {
-    setBudgets(budgets.map(budget => 
-      budget.id === budgetId ? { ...budget, status: newStatus } : budget
-    ));
-    
-    // Dispara um evento customizado para notificar outros componentes
-    window.dispatchEvent(new CustomEvent('budgetCreated'));
+    const budget = budgets.find(b => b.id === budgetId);
+    if (budget) {
+      setBudgets(budgets.map(budget => 
+        budget.id === budgetId ? { ...budget, status: newStatus } : budget
+      ));
+      addLog('edit', 'orcamento', budget.title, `Status alterado para: ${newStatus}`);
+      
+      // Dispara um evento customizado para notificar outros componentes
+      window.dispatchEvent(new CustomEvent('budgetCreated'));
+    }
   };
 
   const getStatusColor = (status: string) => {
