@@ -11,6 +11,8 @@ import { Produtos } from "@/components/Produtos";
 import { Relatorios } from "@/components/Relatorios";
 import { Orcamentos } from "@/components/Orcamentos";
 import { LoginPanel } from "@/components/LoginPanel";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -18,39 +20,51 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPanel />} />
-          <Route path="/" element={
-            <Layout>
-              <Dashboard />
-            </Layout>
-          } />
-          <Route path="/clientes" element={
-            <Layout>
-              <Clientes />
-            </Layout>
-          } />
-          <Route path="/produtos" element={
-            <Layout>
-              <Produtos />
-            </Layout>
-          } />
-          <Route path="/relatorios" element={
-            <Layout>
-              <Relatorios />
-            </Layout>
-          } />
-          <Route path="/orcamentos" element={
-            <Layout>
-              <Orcamentos />
-            </Layout>
-          } />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <AuthProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPanel />} />
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Dashboard />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/clientes" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Clientes />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/produtos" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Produtos />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/relatorios" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Relatorios />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/orcamentos" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Orcamentos />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

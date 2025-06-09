@@ -6,26 +6,38 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LogIn, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { Navigate } from "react-router-dom";
 
 export function LoginPanel() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { login, isLoading, isAuthenticated } = useAuth();
+
+  // Se já estiver autenticado, redirecionar para dashboard
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    // Simular login (aqui você integraria com Supabase)
-    setTimeout(() => {
-      setIsLoading(false);
+    
+    const success = await login(email, password);
+    
+    if (success) {
       toast({
-        title: "Login simulado",
-        description: "Para funcionalidade completa, conecte ao Supabase",
+        title: "Login realizado com sucesso!",
+        description: "Bem-vindo ao Fortal CRM",
       });
-    }, 1000);
+    } else {
+      toast({
+        title: "Erro no login",
+        description: "Verifique suas credenciais e tente novamente",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

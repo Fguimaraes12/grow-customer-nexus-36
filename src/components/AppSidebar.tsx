@@ -1,5 +1,5 @@
 
-import { LayoutDashboard, Users, FileText, DollarSign, Calendar, User } from "lucide-react";
+import { LayoutDashboard, Users, FileText, DollarSign, Calendar, User, LogOut } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -12,6 +12,9 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 const menuItems = [
   {
@@ -43,6 +46,16 @@ const menuItems = [
 
 export function AppSidebar() {
   const location = useLocation();
+  const { user, logout } = useAuth();
+  const { toast } = useToast();
+
+  const handleLogout = () => {
+    logout();
+    toast({
+      title: "Logout realizado",
+      description: "Você foi desconectado com sucesso",
+    });
+  };
 
   return (
     <Sidebar className="bg-crm-dark border-crm-border">
@@ -76,14 +89,25 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-crm-border">
-        <div className="p-4 flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-            <User className="h-4 w-4 text-white" />
+        <div className="p-4 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+              <User className="h-4 w-4 text-white" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm text-white">{user?.name || 'Proprietário'}</p>
+              <p className="text-xs text-gray-400">{user?.email || 'Usuário'}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm text-white">Proprietário</p>
-            <p className="text-xs text-gray-400">Proprietário</p>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            className="w-full justify-start text-gray-300 hover:text-white hover:bg-crm-card"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Sair
+          </Button>
         </div>
       </SidebarFooter>
     </Sidebar>
