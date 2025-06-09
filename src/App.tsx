@@ -10,6 +10,7 @@ import { Clientes } from "@/components/Clientes";
 import { Produtos } from "@/components/Produtos";
 import { Relatorios } from "@/components/Relatorios";
 import { Orcamentos } from "@/components/Orcamentos";
+import { LoginPanel } from "@/components/LoginPanel";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,16 +21,35 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/clientes" element={<Clientes />} />
-            <Route path="/produtos" element={<Produtos />} />
-            <Route path="/relatorios" element={<Relatorios />} />
-            <Route path="/orcamentos" element={<Orcamentos />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Layout>
+        <Routes>
+          <Route path="/login" element={<LoginPanel />} />
+          <Route path="/" element={
+            <Layout>
+              <Dashboard />
+            </Layout>
+          } />
+          <Route path="/clientes" element={
+            <Layout>
+              <Clientes />
+            </Layout>
+          } />
+          <Route path="/produtos" element={
+            <Layout>
+              <Produtos />
+            </Layout>
+          } />
+          <Route path="/relatorios" element={
+            <Layout>
+              <Relatorios />
+            </Layout>
+          } />
+          <Route path="/orcamentos" element={
+            <Layout>
+              <Orcamentos />
+            </Layout>
+          } />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
