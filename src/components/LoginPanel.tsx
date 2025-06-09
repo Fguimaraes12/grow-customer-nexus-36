@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
 
 export function LoginPanel() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
@@ -24,7 +24,7 @@ export function LoginPanel() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const success = await login(email, password);
+    const success = await login(username, password);
     
     if (success) {
       toast({
@@ -34,7 +34,7 @@ export function LoginPanel() {
     } else {
       toast({
         title: "Erro no login",
-        description: "Credenciais inválidas. Use: admin / admin",
+        description: "Credenciais inválidas. Verifique usuário e senha.",
         variant: "destructive",
       });
     }
@@ -56,25 +56,25 @@ export function LoginPanel() {
         </CardHeader>
         <CardContent>
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-            <div className="flex items-center gap-2 text-blue-800">
+            <div className="flex items-center gap-2 text-blue-800 mb-2">
               <Info className="h-4 w-4" />
               <span className="text-sm font-medium">Credenciais de teste:</span>
             </div>
-            <div className="text-sm text-blue-700 mt-1">
-              <div>Login: <strong>admin</strong></div>
-              <div>Senha: <strong>admin</strong></div>
+            <div className="text-sm text-blue-700 space-y-1">
+              <div><strong>Administrador:</strong> admin / #crm1221@</div>
+              <div><strong>Funcionário:</strong> staff / #crm22f11@</div>
             </div>
           </div>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Login</Label>
+              <Label htmlFor="username">Usuário</Label>
               <Input
-                id="email"
+                id="username"
                 type="text"
-                placeholder="Digite seu login"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Digite seu usuário"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
               />
             </div>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Plus, Edit, Trash2, FileText } from "lucide-react";
 import { ProdutoModal } from "./modals/ProdutoModal";
+import { useLogs } from "@/contexts/LogsContext";
 
 export function Produtos() {
   const [products, setProducts] = useState(() => {
@@ -32,6 +33,7 @@ export function Produtos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const { addLog } = useLogs();
 
   // Salva produtos no localStorage sempre que a lista muda
   useEffect(() => {
@@ -47,9 +49,11 @@ export function Produtos() {
       setProducts(products.map(product => 
         product.id === editingProduct.id ? productData : product
       ));
+      addLog('edit', 'produto', productData.name);
       setEditingProduct(null);
     } else {
       setProducts([...products, productData]);
+      addLog('create', 'produto', productData.name);
     }
   };
 
@@ -59,7 +63,11 @@ export function Produtos() {
   };
 
   const handleDeleteProduct = (productId: number) => {
-    setProducts(products.filter(product => product.id !== productId));
+    const product = products.find(p => p.id === productId);
+    if (product) {
+      setProducts(products.filter(product => product.id !== productId));
+      addLog('delete', 'produto', product.name);
+    }
   };
 
   const handleNewProduct = () => {

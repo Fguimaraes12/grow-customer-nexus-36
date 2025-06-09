@@ -1,5 +1,5 @@
 
-import { LayoutDashboard, Users, FileText, DollarSign, Calendar, User, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, FileText, DollarSign, Calendar, User, LogOut, FileX } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -21,32 +21,43 @@ const menuItems = [
     title: "Dashboard",
     url: "/",
     icon: LayoutDashboard,
+    permission: "dashboard",
   },
   {
     title: "Clientes",
     url: "/clientes",
     icon: Users,
+    permission: "clientes",
   },
   {
     title: "Produtos",
     url: "/produtos",
     icon: FileText,
+    permission: "produtos",
   },
   {
     title: "Relatórios",
     url: "/relatorios",
     icon: DollarSign,
+    permission: "relatorios",
   },
   {
     title: "Orçamentos",
     url: "/orcamentos",
     icon: Calendar,
+    permission: "orcamentos",
+  },
+  {
+    title: "Logs",
+    url: "/logs",
+    icon: FileX,
+    permission: "logs",
   },
 ];
 
 export function AppSidebar() {
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const { toast } = useToast();
 
   const handleLogout = () => {
@@ -56,6 +67,8 @@ export function AppSidebar() {
       description: "Você foi desconectado com sucesso",
     });
   };
+
+  const visibleMenuItems = menuItems.filter(item => hasPermission(item.permission));
 
   return (
     <Sidebar className="bg-crm-dark border-crm-border">
@@ -69,7 +82,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {visibleMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
                     asChild 
@@ -95,8 +108,8 @@ export function AppSidebar() {
               <User className="h-4 w-4 text-white" />
             </div>
             <div className="flex-1">
-              <p className="text-sm text-white">{user?.name || 'Proprietário'}</p>
-              <p className="text-xs text-gray-400">{user?.email || 'Usuário'}</p>
+              <p className="text-sm text-white">{user?.name}</p>
+              <p className="text-xs text-gray-400">{user?.role === 'admin' ? 'Administrador' : 'Funcionário'}</p>
             </div>
           </div>
           <Button

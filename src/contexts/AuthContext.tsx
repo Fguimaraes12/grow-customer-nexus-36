@@ -5,14 +5,17 @@ interface User {
   id: string;
   email: string;
   name: string;
+  role: 'admin' | 'staff';
+  permissions: string[];
 }
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
+  hasPermission: (permission: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,9 +32,29 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Credenciais fixas
-const ADMIN_LOGIN = "admin";
-const ADMIN_PASSWORD = "admin";
+// Credenciais e permissões por cargo
+const USERS = {
+  admin: {
+    password: '#crm1221@',
+    userData: {
+      id: '1',
+      email: 'admin@fortal.com',
+      name: 'Administrador',
+      role: 'admin' as const,
+      permissions: ['dashboard', 'clientes', 'produtos', 'relatorios', 'orcamentos', 'logs']
+    }
+  },
+  staff: {
+    password: '#crm22f11@',
+    userData: {
+      id: '2',
+      email: 'staff@fortal.com',
+      name: 'Funcionário',
+      role: 'staff' as const,
+      permissions: ['dashboard', 'clientes', 'produtos', 'orcamentos']
+    }
+  }
+};
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
@@ -46,21 +69,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (username: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
     // Simular delay de login
     return new Promise((resolve) => {
       setTimeout(() => {
-        // Validar credenciais fixas
-        if (email === ADMIN_LOGIN && password === ADMIN_PASSWORD) {
-          const mockUser: User = {
-            id: '1',
-            email: 'admin@fortal.com',
-            name: 'Administrador'
-          };
-          setUser(mockUser);
-          localStorage.setItem('user', JSON.stringify(mockUser));
+        // Validar credenciais
+        const userConfig = USERS[username as keyof typeof USERS];
+        if (userConfig && password === userConfig.password) {
+          setUser(userConfig.userData);
+          localStorage.setItem('user', JSON.stringify(userConfig.userData));
           setIsLoading(false);
           resolve(true);
         } else {
@@ -76,12 +95,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     localStorage.removeItem('user');
   };
 
+  const hasPermission = (permission: string): boolean => {
+    return user?.permissions.includes(permission) || false;
+  };
+
   const value = {
     user,
     isLoading,
     login,
     logout,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    hasPermission
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
