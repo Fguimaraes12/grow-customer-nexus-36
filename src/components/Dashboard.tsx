@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, DollarSign, TrendingUp, Calendar } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -47,11 +46,13 @@ export function Dashboard() {
     // Calcular total de clientes
     const totalClientes = clients.length;
 
-    // Calcular receitas do mês (soma dos orçamentos) - usando a função parseValue corrigida
-    const receitasTotal = budgets.reduce((total, budget) => {
-      const value = parseValue(budget.total);
-      return total + value;
-    }, 0);
+    // Calcular receitas do mês APENAS dos orçamentos FINALIZADOS
+    const receitasTotal = budgets
+      .filter(budget => budget.status === 'Finalizado')
+      .reduce((total, budget) => {
+        const value = parseValue(budget.total);
+        return total + value;
+      }, 0);
 
     // Calcular despesas do mês
     const despesasTotal = expenses.reduce((total, expense) => {

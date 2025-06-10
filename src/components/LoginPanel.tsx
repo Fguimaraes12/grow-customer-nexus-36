@@ -47,9 +47,9 @@ export function LoginPanel() {
           <div className="flex items-center justify-center mb-4">
             <div className="p-3 rounded-full bg-primary/10">
               <img 
-                src="https://imgur.com/a/aVtITzh" 
-                alt="Logo" 
-                className="h-12 w-12 object-contain"
+                src="/lovable-uploads/b7ec195a-be51-4c1c-a46c-fc8abbb9e651.png" 
+                alt="Fortal CRM Logo" 
+                className="h-20 w-auto object-contain"
               />
             </div>
           </div>

@@ -75,7 +75,7 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-crm-border">
         <div className="p-4 flex justify-center">
           <img 
-            src="https://imgur.com/a/zLp7b7P" 
+            src="/lovable-uploads/5e33d1c8-1407-4145-b0cd-10aceaa0308a.png" 
             alt="Fortal CRM" 
             className="h-8 w-auto object-contain"
           />
@@ -110,7 +110,7 @@ export function AppSidebar() {
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden">
               <img 
-                src="https://imgur.com/a/aVtITzh" 
+                src="/lovable-uploads/5e33d1c8-1407-4145-b0cd-10aceaa0308a.png" 
                 alt="User Avatar" 
                 className="h-6 w-6 object-contain"
               />
