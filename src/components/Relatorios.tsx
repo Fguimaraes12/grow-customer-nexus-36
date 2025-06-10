@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,12 +13,14 @@ export function Relatorios() {
       {
         id: 1,
         title: "Material de impressão",
+        client: "João Silva",
         date: "2024-06-01",
         value: "- R$ 250,00",
       },
       {
         id: 2,
         title: "Energia elétrica",
+        client: "Maria Santos",
         date: "2024-06-03",
         value: "- R$ 180,00",
       },
@@ -194,7 +195,7 @@ export function Relatorios() {
                   <div key={expense.id} className="flex justify-between items-center p-4 rounded-lg border border-crm-border">
                     <div>
                       <p className="text-white font-medium">{expense.title}</p>
-                      <p className="text-gray-400 text-sm">{expense.date}</p>
+                      <p className="text-gray-400 text-sm">{expense.client} • {expense.date}</p>
                     </div>
                     <div className="flex items-center gap-4">
                       <p className="text-red-400 font-semibold">{expense.value}</p>

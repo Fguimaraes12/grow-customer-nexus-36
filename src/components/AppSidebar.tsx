@@ -108,11 +108,11 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-crm-border">
         <div className="p-4 space-y-3">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center overflow-hidden">
               <img 
                 src="/lovable-uploads/5e33d1c8-1407-4145-b0cd-10aceaa0308a.png" 
                 alt="User Avatar" 
-                className="h-6 w-6 object-contain"
+                className="h-10 w-10 object-contain"
               />
             </div>
             <div className="flex-1">

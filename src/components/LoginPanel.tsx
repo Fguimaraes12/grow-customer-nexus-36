@@ -45,13 +45,11 @@ export function LoginPanel() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <div className="p-3 rounded-full bg-primary/10">
-              <img 
-                src="/lovable-uploads/b7ec195a-be51-4c1c-a46c-fc8abbb9e651.png" 
-                alt="Fortal CRM Logo" 
-                className="h-20 w-auto object-contain"
-              />
-            </div>
+            <img 
+              src="/lovable-uploads/b7ec195a-be51-4c1c-a46c-fc8abbb9e651.png" 
+              alt="Fortal CRM Logo" 
+              className="h-20 w-auto object-contain"
+            />
           </div>
           <CardTitle className="text-2xl text-center">Bem-vindo de volta</CardTitle>
           <CardDescription className="text-center">
