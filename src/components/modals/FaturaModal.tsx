@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface FaturaModalProps {
   open: boolean;
@@ -19,6 +20,15 @@ export function FaturaModal({ open, onOpenChange, fatura, onSave }: FaturaModalP
     value: fatura?.value ? fatura.value.replace('+ R$ ', '').replace('.', '').replace(',', '.') : "",
     date: fatura?.date || new Date().toISOString().split('T')[0],
   });
+
+  // Carrega clientes do localStorage
+  const clientes = (() => {
+    const savedClients = localStorage.getItem('clientes');
+    return savedClients ? JSON.parse(savedClients) : [
+      { id: 1, name: "João Silva" },
+      { id: 2, name: "Maria Santos" },
+    ];
+  })();
 
   const formatPrice = (value: string) => {
     // Remove tudo que não for número
@@ -71,13 +81,18 @@ export function FaturaModal({ open, onOpenChange, fatura, onSave }: FaturaModalP
           </div>
           <div>
             <Label htmlFor="client">Cliente</Label>
-            <Input
-              id="client"
-              value={formData.client}
-              onChange={(e) => setFormData({ ...formData, client: e.target.value })}
-              className="bg-crm-dark border-crm-border text-white"
-              required
-            />
+            <Select value={formData.client} onValueChange={(value) => setFormData({ ...formData, client: value })}>
+              <SelectTrigger className="bg-crm-dark border-crm-border text-white">
+                <SelectValue placeholder="Selecione um cliente" />
+              </SelectTrigger>
+              <SelectContent className="bg-crm-dark border-crm-border">
+                {clientes.map((cliente) => (
+                  <SelectItem key={cliente.id} value={cliente.name} className="text-white">
+                    {cliente.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label htmlFor="value">Valor</Label>

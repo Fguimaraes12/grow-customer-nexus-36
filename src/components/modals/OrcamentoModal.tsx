@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,12 +12,27 @@ interface OrcamentoModalProps {
   onOpenChange: (open: boolean) => void;
   clientes: any[];
   produtos: any[];
+  budget?: any;
   onSave: (orcamento: any) => void;
 }
 
-export function OrcamentoModal({ open, onOpenChange, clientes, produtos, onSave }: OrcamentoModalProps) {
+export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget, onSave }: OrcamentoModalProps) {
   const [selectedClient, setSelectedClient] = useState("");
   const [items, setItems] = useState([{ product: "", quantity: 1, price: 0 }]);
+
+  useEffect(() => {
+    if (budget) {
+      setSelectedClient(budget.client);
+      setItems(budget.items.map((item: any) => ({
+        product: item.name,
+        quantity: item.quantity,
+        price: parseFloat(item.price)
+      })));
+    } else {
+      setSelectedClient("");
+      setItems([{ product: "", quantity: 1, price: 0 }]);
+    }
+  }, [budget, open]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -84,12 +99,12 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, onSave 
     const totalValue = items.reduce((total, item) => total + (item.quantity * item.price), 0);
 
     const orcamento = {
-      id: Date.now(),
-      title: `Orçamento #${Date.now()}`,
+      id: budget?.id || Date.now(),
+      title: budget?.title || `Orçamento #${Date.now()}`,
       client: selectedClient,
-      date: new Date().toLocaleDateString('pt-BR'),
-      total: formatCurrency(totalValue), // Salva já formatado
-      status: "Rascunho",
+      date: budget?.date || new Date().toLocaleDateString('pt-BR'),
+      total: formatCurrency(totalValue),
+      status: budget?.status || "Rascunho",
       items: validItems,
     };
 
@@ -97,16 +112,18 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, onSave 
     onSave(orcamento);
     onOpenChange(false);
     
-    // Reset form
-    setSelectedClient("");
-    setItems([{ product: "", quantity: 1, price: 0 }]);
+    // Reset form se não for edição
+    if (!budget) {
+      setSelectedClient("");
+      setItems([{ product: "", quantity: 1, price: 0 }]);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-crm-card border-crm-border text-white max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Novo Orçamento</DialogTitle>
+          <DialogTitle>{budget ? "Editar Orçamento" : "Novo Orçamento"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
@@ -199,7 +216,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, onSave 
               Cancelar
             </Button>
             <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-              Criar Orçamento
+              {budget ? "Atualizar Orçamento" : "Criar Orçamento"}
             </Button>
           </div>
         </form>

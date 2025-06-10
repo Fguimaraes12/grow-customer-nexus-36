@@ -1,5 +1,5 @@
 
-import { LayoutDashboard, Users, FileText, DollarSign, Calendar, User, LogOut, FileX } from "lucide-react";
+import { LayoutDashboard, Users, FileText, DollarSign, Calendar, LogOut, FileX } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -73,8 +73,12 @@ export function AppSidebar() {
   return (
     <Sidebar className="bg-crm-dark border-crm-border">
       <SidebarHeader className="border-b border-crm-border">
-        <div className="p-4">
-          <h2 className="text-xl font-bold text-white">Fortal CRM</h2>
+        <div className="p-4 flex justify-center">
+          <img 
+            src="https://imgur.com/a/zLp7b7P" 
+            alt="Fortal CRM" 
+            className="h-8 w-auto object-contain"
+          />
         </div>
       </SidebarHeader>
       
@@ -104,8 +108,12 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-crm-border">
         <div className="p-4 space-y-3">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-              <User className="h-4 w-4 text-white" />
+            <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden">
+              <img 
+                src="https://imgur.com/a/aVtITzh" 
+                alt="User Avatar" 
+                className="h-6 w-6 object-contain"
+              />
             </div>
             <div className="flex-1">
               <p className="text-sm text-white">{user?.name}</p>

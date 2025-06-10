@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Edit } from "lucide-react";
 import { OrcamentoModal } from "./modals/OrcamentoModal";
 import { useLogs } from "@/contexts/LogsContext";
 
@@ -47,6 +47,7 @@ export function Orcamentos() {
   });
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingBudget, setEditingBudget] = useState(null);
   const { addLog } = useLogs();
 
   // Salva orçamentos no localStorage sempre que a lista muda
@@ -79,8 +80,16 @@ export function Orcamentos() {
   };
 
   const handleSaveBudget = (budgetData: any) => {
-    setBudgets([...budgets, budgetData]);
-    addLog('create', 'orcamento', budgetData.title, `Cliente: ${budgetData.client} - Total: ${budgetData.total}`);
+    if (editingBudget) {
+      setBudgets(budgets.map(budget => 
+        budget.id === editingBudget.id ? budgetData : budget
+      ));
+      addLog('edit', 'orcamento', budgetData.title, `Cliente: ${budgetData.client} - Total: ${budgetData.total}`);
+      setEditingBudget(null);
+    } else {
+      setBudgets([...budgets, budgetData]);
+      addLog('create', 'orcamento', budgetData.title, `Cliente: ${budgetData.client} - Total: ${budgetData.total}`);
+    }
     
     // Dispara um evento customizado para notificar outros componentes
     window.dispatchEvent(new CustomEvent('budgetCreated'));
@@ -110,6 +119,11 @@ export function Orcamentos() {
     }
   };
 
+  const handleEditBudget = (budget: any) => {
+    setEditingBudget(budget);
+    setModalOpen(true);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Rascunho':
@@ -128,7 +142,10 @@ export function Orcamentos() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-white">Orçamentos</h1>
         <Button 
-          onClick={() => setModalOpen(true)}
+          onClick={() => {
+            setEditingBudget(null);
+            setModalOpen(true);
+          }}
           className="bg-blue-600 hover:bg-blue-700"
         >
           <Plus className="h-4 w-4 mr-2" />
@@ -158,6 +175,14 @@ export function Orcamentos() {
                         <SelectItem value="Finalizado" className="text-white">Finalizado</SelectItem>
                       </SelectContent>
                     </Select>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => handleEditBudget(budget)}
+                      className="text-gray-400 hover:text-blue-400"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
                     <Button 
                       size="sm" 
                       variant="ghost" 
@@ -197,6 +222,7 @@ export function Orcamentos() {
         onOpenChange={setModalOpen}
         clientes={clientes}
         produtos={produtos}
+        budget={editingBudget}
         onSave={handleSaveBudget}
       />
     </div>
