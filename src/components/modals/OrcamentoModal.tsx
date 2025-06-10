@@ -55,6 +55,13 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
     return isNaN(numberValue) ? 0 : numberValue;
   };
 
+  const formatPriceInput = (value: number) => {
+    return value.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
   const addItem = () => {
     setItems([...items, { product: "", quantity: 1, price: 0 }]);
   };
@@ -77,6 +84,11 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
     }
     
     setItems(newItems);
+  };
+
+  const handlePriceChange = (index: number, priceString: string) => {
+    const priceValue = parsePrice(priceString);
+    updateItem(index, "price", priceValue);
   };
 
   const calculateTotal = () => {
@@ -186,9 +198,13 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
                   
                   <div className="w-32">
                     <Label>Preço</Label>
-                    <div className="text-white bg-crm-dark border border-crm-border rounded-md px-3 py-2 text-sm">
-                      {formatCurrency(item.price)}
-                    </div>
+                    <Input
+                      type="text"
+                      value={formatPriceInput(item.price)}
+                      onChange={(e) => handlePriceChange(index, e.target.value)}
+                      placeholder="0,00"
+                      className="bg-crm-dark border-crm-border text-white"
+                    />
                   </div>
                   
                   <Button
