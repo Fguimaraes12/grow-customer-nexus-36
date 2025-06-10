@@ -80,8 +80,8 @@ export function FaturaModal({ open, onOpenChange, fatura, onSave }: FaturaModalP
             />
           </div>
           <div>
-            <Label htmlFor="client">Cliente</Label>
-            <Select value={formData.client} onValueChange={(value) => setFormData({ ...formData, client: value })}>
+            <Label htmlFor="client">Cliente *</Label>
+            <Select value={formData.client} onValueChange={(value) => setFormData({ ...formData, client: value })} required>
               <SelectTrigger className="bg-crm-dark border-crm-border text-white">
                 <SelectValue placeholder="Selecione um cliente" />
               </SelectTrigger>

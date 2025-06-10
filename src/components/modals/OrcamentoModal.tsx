@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -18,7 +17,7 @@ interface OrcamentoModalProps {
 
 export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget, onSave }: OrcamentoModalProps) {
   const [selectedClient, setSelectedClient] = useState("");
-  const [items, setItems] = useState([{ product: "", quantity: 1, price: 0 }]);
+  const [items, setItems] = useState([{ product: "", quantity: 1, price: 0, priceInput: "" }]);
 
   useEffect(() => {
     if (budget) {
@@ -26,11 +25,12 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
       setItems(budget.items.map((item: any) => ({
         product: item.name,
         quantity: item.quantity,
-        price: parseFloat(item.price)
+        price: parseFloat(item.price),
+        priceInput: formatPriceInput(parseFloat(item.price))
       })));
     } else {
       setSelectedClient("");
-      setItems([{ product: "", quantity: 1, price: 0 }]);
+      setItems([{ product: "", quantity: 1, price: 0, priceInput: "" }]);
     }
   }, [budget, open]);
 
@@ -56,6 +56,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
   };
 
   const formatPriceInput = (value: number) => {
+    if (value === 0) return '';
     return value.toLocaleString('pt-BR', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
@@ -63,7 +64,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
   };
 
   const addItem = () => {
-    setItems([...items, { product: "", quantity: 1, price: 0 }]);
+    setItems([...items, { product: "", quantity: 1, price: 0, priceInput: "" }]);
   };
 
   const removeItem = (index: number) => {
@@ -80,15 +81,26 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
         // Usar a função parsePrice para converter o preço
         const priceValue = parsePrice(selectedProduct.price);
         newItems[index].price = priceValue;
+        newItems[index].priceInput = formatPriceInput(priceValue);
       }
     }
     
     setItems(newItems);
   };
 
-  const handlePriceChange = (index: number, priceString: string) => {
-    const priceValue = parsePrice(priceString);
-    updateItem(index, "price", priceValue);
+  const handlePriceChange = (index: number, inputValue: string) => {
+    const newItems = [...items];
+    newItems[index].priceInput = inputValue;
+    
+    // Só atualiza o preço numérico se o input não estiver vazio
+    if (inputValue.trim() !== '') {
+      const priceValue = parsePrice(inputValue);
+      newItems[index].price = priceValue;
+    } else {
+      newItems[index].price = 0;
+    }
+    
+    setItems(newItems);
   };
 
   const calculateTotal = () => {
@@ -127,7 +139,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
     // Reset form se não for edição
     if (!budget) {
       setSelectedClient("");
-      setItems([{ product: "", quantity: 1, price: 0 }]);
+      setItems([{ product: "", quantity: 1, price: 0, priceInput: "" }]);
     }
   };
 
@@ -200,7 +212,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
                     <Label>Preço</Label>
                     <Input
                       type="text"
-                      value={formatPriceInput(item.price)}
+                      value={item.priceInput}
                       onChange={(e) => handlePriceChange(index, e.target.value)}
                       placeholder="0,00"
                       className="bg-crm-dark border-crm-border text-white"
