@@ -1,10 +1,16 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Calendar } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { ptBR } from "date-fns/locale";
 
 interface OrcamentoModalProps {
   open: boolean;
@@ -17,11 +23,13 @@ interface OrcamentoModalProps {
 
 export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget, onSave }: OrcamentoModalProps) {
   const [selectedClient, setSelectedClient] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState<Date>();
   const [items, setItems] = useState([{ product: "", quantity: 1, price: 0, priceInput: "" }]);
 
   useEffect(() => {
     if (budget) {
       setSelectedClient(budget.client);
+      setDeliveryDate(budget.deliveryDate ? new Date(budget.deliveryDate) : undefined);
       setItems(budget.items.map((item: any) => ({
         product: item.name,
         quantity: item.quantity,
@@ -30,6 +38,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
       })));
     } else {
       setSelectedClient("");
+      setDeliveryDate(undefined);
       setItems([{ product: "", quantity: 1, price: 0, priceInput: "" }]);
     }
   }, [budget, open]);
@@ -127,6 +136,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
       title: budget?.title || `Orçamento #${Date.now()}`,
       client: selectedClient,
       date: budget?.date || new Date().toLocaleDateString('pt-BR'),
+      deliveryDate: deliveryDate ? deliveryDate.toISOString() : undefined,
       total: formatCurrency(totalValue),
       status: budget?.status || "Rascunho",
       items: validItems,
@@ -139,6 +149,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
     // Reset form se não for edição
     if (!budget) {
       setSelectedClient("");
+      setDeliveryDate(undefined);
       setItems([{ product: "", quantity: 1, price: 0, priceInput: "" }]);
     }
   };
@@ -150,20 +161,50 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
           <DialogTitle>{budget ? "Editar Orçamento" : "Novo Orçamento"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <Label htmlFor="client">Cliente *</Label>
-            <Select value={selectedClient} onValueChange={setSelectedClient} required>
-              <SelectTrigger className="bg-crm-dark border-crm-border text-white">
-                <SelectValue placeholder="Selecione um cliente" />
-              </SelectTrigger>
-              <SelectContent className="bg-crm-dark border-crm-border">
-                {clientes.map((cliente) => (
-                  <SelectItem key={cliente.id} value={cliente.name} className="text-white">
-                    {cliente.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="client">Cliente *</Label>
+              <Select value={selectedClient} onValueChange={setSelectedClient} required>
+                <SelectTrigger className="bg-crm-dark border-crm-border text-white">
+                  <SelectValue placeholder="Selecione um cliente" />
+                </SelectTrigger>
+                <SelectContent className="bg-crm-dark border-crm-border">
+                  {clientes.map((cliente) => (
+                    <SelectItem key={cliente.id} value={cliente.name} className="text-white">
+                      {cliente.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Data de Entrega</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal bg-crm-dark border-crm-border text-white",
+                      !deliveryDate && "text-gray-400"
+                    )}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {deliveryDate ? format(deliveryDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 bg-crm-dark border-crm-border" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={deliveryDate}
+                    onSelect={setDeliveryDate}
+                    initialFocus
+                    className="p-3 pointer-events-auto text-white"
+                    disabled={(date) => date < new Date()}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
           <div>

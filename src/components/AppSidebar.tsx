@@ -1,5 +1,5 @@
 
-import { LayoutDashboard, Users, FileText, DollarSign, Calendar, LogOut, FileX } from "lucide-react";
+import { LayoutDashboard, Users, FileText, DollarSign, Calendar, LogOut, FileX, CalendarDays } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -46,6 +46,12 @@ const menuItems = [
     url: "/orcamentos",
     icon: Calendar,
     permission: "orcamentos",
+  },
+  {
+    title: "Agenda",
+    url: "/agenda",
+    icon: CalendarDays,
+    permission: "agenda",
   },
   {
     title: "Logs",
