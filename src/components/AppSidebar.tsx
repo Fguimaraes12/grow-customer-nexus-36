@@ -76,6 +76,12 @@ export function AppSidebar() {
 
   const visibleMenuItems = menuItems.filter(item => hasPermission(item.permission));
 
+  // Debug logs
+  console.log("Menu items:", menuItems);
+  console.log("User:", user);
+  console.log("Visible menu items:", visibleMenuItems);
+  console.log("Has agenda permission:", hasPermission("agenda"));
+
   return (
     <Sidebar className="bg-crm-dark border-crm-border">
       <SidebarHeader className="border-b border-crm-border">
