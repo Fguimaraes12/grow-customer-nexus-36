@@ -41,7 +41,7 @@ const USERS = {
       email: 'admin@fortal.com',
       name: 'Administrador',
       role: 'admin' as const,
-      permissions: ['dashboard', 'clientes', 'produtos', 'relatorios', 'orcamentos', 'logs']
+      permissions: ['dashboard', 'clientes', 'produtos', 'relatorios', 'orcamentos', 'agenda', 'logs']
     }
   },
   staff: {
@@ -51,7 +51,7 @@ const USERS = {
       email: 'staff@fortal.com',
       name: 'Funcionário',
       role: 'staff' as const,
-      permissions: ['dashboard', 'clientes', 'produtos', 'orcamentos']
+      permissions: ['dashboard', 'clientes', 'produtos', 'orcamentos', 'agenda']
     }
   }
 };
