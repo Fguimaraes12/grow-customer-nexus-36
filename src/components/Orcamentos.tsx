@@ -12,20 +12,7 @@ export function Orcamentos() {
   const [budgets, setBudgets] = useState(() => {
     // Carrega orçamentos do localStorage na inicialização
     const savedBudgets = localStorage.getItem('orcamentos');
-    return savedBudgets ? JSON.parse(savedBudgets) : [
-      {
-        id: 1,
-        title: "Orçamento #1",
-        client: "João Silva",
-        date: "2024-06-05",
-        total: "R$ 380,00",
-        status: "Rascunho",
-        items: [
-          { quantity: 2, name: "Banner 2x1m", price: "80.00" },
-          { quantity: 1, name: "Placa ACM", price: "150.00" },
-        ],
-      },
-    ];
+    return savedBudgets ? JSON.parse(savedBudgets) : [];
   });
 
   // Carrega produtos e clientes do localStorage
@@ -126,8 +113,6 @@ export function Orcamentos() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Rascunho':
-        return 'bg-yellow-600 text-white border-yellow-600';
       case 'Finalizado':
         return 'bg-green-600 text-white border-green-600';
       case 'Aguardando':
@@ -170,7 +155,6 @@ export function Orcamentos() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-crm-dark border-crm-border">
-                        <SelectItem value="Rascunho" className="text-white">Rascunho</SelectItem>
                         <SelectItem value="Aguardando" className="text-white">Aguardando</SelectItem>
                         <SelectItem value="Finalizado" className="text-white">Finalizado</SelectItem>
                       </SelectContent>

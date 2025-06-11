@@ -5,12 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Calendar } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
-import { ptBR } from "date-fns/locale";
+import { Plus, Trash2 } from "lucide-react";
 
 interface OrcamentoModalProps {
   open: boolean;
@@ -23,13 +18,20 @@ interface OrcamentoModalProps {
 
 export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget, onSave }: OrcamentoModalProps) {
   const [selectedClient, setSelectedClient] = useState("");
-  const [deliveryDate, setDeliveryDate] = useState<Date>();
+  const [deliveryDate, setDeliveryDate] = useState("");
   const [items, setItems] = useState([{ product: "", quantity: 1, price: 0, priceInput: "" }]);
 
   useEffect(() => {
     if (budget) {
       setSelectedClient(budget.client);
-      setDeliveryDate(budget.deliveryDate ? new Date(budget.deliveryDate) : undefined);
+      // Se tem data de entrega salva, formata para DD/MM/AAAA
+      if (budget.deliveryDate) {
+        const date = new Date(budget.deliveryDate);
+        const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+        setDeliveryDate(formattedDate);
+      } else {
+        setDeliveryDate("");
+      }
       setItems(budget.items.map((item: any) => ({
         product: item.name,
         quantity: item.quantity,
@@ -38,7 +40,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
       })));
     } else {
       setSelectedClient("");
-      setDeliveryDate(undefined);
+      setDeliveryDate("");
       setItems([{ product: "", quantity: 1, price: 0, priceInput: "" }]);
     }
   }, [budget, open]);
@@ -70,6 +72,33 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     });
+  };
+
+  const handleDateChange = (value: string) => {
+    // Remove tudo que não for número
+    const numbersOnly = value.replace(/\D/g, '');
+    
+    // Aplica a máscara DD/MM/AAAA
+    let formattedDate = '';
+    for (let i = 0; i < numbersOnly.length && i < 8; i++) {
+      if (i === 2 || i === 4) {
+        formattedDate += '/';
+      }
+      formattedDate += numbersOnly[i];
+    }
+    
+    setDeliveryDate(formattedDate);
+  };
+
+  const parseDateToISO = (dateString: string) => {
+    if (!dateString || dateString.length !== 10) return null;
+    
+    const [day, month, year] = dateString.split('/');
+    if (!day || !month || !year) return null;
+    
+    // Cria a data no formato ISO
+    const isoDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    return isoDate.toISOString();
   };
 
   const addItem = () => {
@@ -136,9 +165,9 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
       title: budget?.title || `Orçamento #${Date.now()}`,
       client: selectedClient,
       date: budget?.date || new Date().toLocaleDateString('pt-BR'),
-      deliveryDate: deliveryDate ? deliveryDate.toISOString() : undefined,
+      deliveryDate: parseDateToISO(deliveryDate),
       total: formatCurrency(totalValue),
-      status: budget?.status || "Rascunho",
+      status: budget?.status || "Aguardando",
       items: validItems,
     };
 
@@ -149,7 +178,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
     // Reset form se não for edição
     if (!budget) {
       setSelectedClient("");
-      setDeliveryDate(undefined);
+      setDeliveryDate("");
       setItems([{ product: "", quantity: 1, price: 0, priceInput: "" }]);
     }
   };
@@ -179,31 +208,16 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
             </div>
 
             <div>
-              <Label>Data de Entrega</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal bg-crm-dark border-crm-border text-white",
-                      !deliveryDate && "text-gray-400"
-                    )}
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {deliveryDate ? format(deliveryDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar data"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-crm-dark border-crm-border" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={deliveryDate}
-                    onSelect={setDeliveryDate}
-                    initialFocus
-                    className="p-3 pointer-events-auto text-white"
-                    disabled={(date) => date < new Date()}
-                  />
-                </PopoverContent>
-              </Popover>
+              <Label htmlFor="deliveryDate">Data de Entrega</Label>
+              <Input
+                id="deliveryDate"
+                type="text"
+                value={deliveryDate}
+                onChange={(e) => handleDateChange(e.target.value)}
+                placeholder="DD/MM/AAAA"
+                maxLength={10}
+                className="bg-crm-dark border-crm-border text-white"
+              />
             </div>
           </div>
 
