@@ -83,11 +83,12 @@ export function Produtos() {
     }
   });
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: number | string) => {
+    const numericValue = typeof value === 'number' ? value : parseFloat(value.toString());
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
-    }).format(value);
+    }).format(numericValue);
   };
 
   const filteredProducts = products.filter(product =>
@@ -171,7 +172,7 @@ export function Produtos() {
                   </div>
                   <div>
                     <h3 className="text-white font-semibold">{product.name}</h3>
-                    <p className="text-green-400 font-bold text-lg">{formatCurrency(parseFloat(product.price))}</p>
+                    <p className="text-green-400 font-bold text-lg">{formatCurrency(product.price)}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">

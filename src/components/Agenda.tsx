@@ -69,11 +69,12 @@ export function Agenda() {
     return items?.reduce((total, item) => total + item.quantity, 0) || 0;
   };
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: number | string) => {
+    const numericValue = typeof value === 'number' ? value : parseFloat(value.toString());
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
-    }).format(value);
+    }).format(numericValue);
   };
 
   if (isLoading) {
@@ -134,7 +135,7 @@ export function Agenda() {
                   
                   <div className="flex items-center gap-2 text-blue-400">
                     <DollarSign className="h-4 w-4" />
-                    <span className="font-semibold">{formatCurrency(parseFloat(budget.total))}</span>
+                    <span className="font-semibold">{formatCurrency(budget.total)}</span>
                   </div>
                   
                   <div className="pt-2 border-t border-crm-border">
@@ -144,7 +145,7 @@ export function Agenda() {
                         <div key={index} className="text-sm text-gray-300 flex justify-between">
                           <span>{item.quantity}x {item.product_name}</span>
                           <span className="text-gray-400">
-                            {formatCurrency(parseFloat(item.subtotal || 0))}
+                            {formatCurrency(item.subtotal || 0)}
                           </span>
                         </div>
                       ))}

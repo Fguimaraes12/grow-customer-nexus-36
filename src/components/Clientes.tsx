@@ -96,17 +96,18 @@ export function Clientes() {
     }
   });
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: number | string) => {
+    const numericValue = typeof value === 'number' ? value : parseFloat(value.toString());
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
-    }).format(value);
+    }).format(numericValue);
   };
 
   const calculateClientStats = (clientName: string) => {
     const clientBudgets = budgets.filter(budget => budget.client_name === clientName);
     const totalSpent = clientBudgets.reduce((total, budget) => {
-      return total + parseFloat(budget.total || 0);
+      return total + parseFloat(budget.total?.toString() || '0');
     }, 0);
     
     return {
