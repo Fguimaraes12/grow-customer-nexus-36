@@ -1,113 +1,238 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Edit } from "lucide-react";
 import { OrcamentoModal } from "./modals/OrcamentoModal";
 import { useLogs } from "@/contexts/LogsContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export function Orcamentos() {
-  const [budgets, setBudgets] = useState(() => {
-    // Carrega orçamentos do localStorage na inicialização
-    const savedBudgets = localStorage.getItem('orcamentos');
-    return savedBudgets ? JSON.parse(savedBudgets) : [];
-  });
-
-  // Carrega produtos e clientes do localStorage
-  const [produtos] = useState(() => {
-    const savedProducts = localStorage.getItem('produtos');
-    return savedProducts ? JSON.parse(savedProducts) : [
-      { id: 1, name: "Banner 2x1m", price: "R$ 80,00" },
-      { id: 2, name: "Adesivo Vinil", price: "R$ 25,00" },
-      { id: 3, name: "Placa ACM", price: "R$ 150,00" },
-    ];
-  });
-
-  const [clientes] = useState(() => {
-    const savedClients = localStorage.getItem('clientes');
-    return savedClients ? JSON.parse(savedClients) : [
-      { id: 1, name: "João Silva" },
-      { id: 2, name: "Maria Santos" },
-    ];
-  });
-
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState(null);
   const { addLog } = useLogs();
+  const queryClient = useQueryClient();
 
-  // Salva orçamentos no localStorage sempre que a lista muda
-  useEffect(() => {
-    localStorage.setItem('orcamentos', JSON.stringify(budgets));
-  }, [budgets]);
+  // Fetch budgets from Supabase
+  const { data: budgets = [], isLoading } = useQuery({
+    queryKey: ['orcamentos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('orcamentos')
+        .select(`
+          *,
+          orcamento_items (
+            id,
+            product_name,
+            price,
+            quantity,
+            subtotal
+          )
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Fetch clients for the modal
+  const { data: clientes = [] } = useQuery({
+    queryKey: ['clientes'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('id, name')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Fetch products for the modal
+  const { data: produtos = [] } = useQuery({
+    queryKey: ['produtos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('produtos')
+        .select('id, name, price')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Create budget mutation
+  const createBudgetMutation = useMutation({
+    mutationFn: async (budgetData: any) => {
+      const { items, ...orcamentoData } = budgetData;
+      
+      // First create the budget
+      const { data: orcamento, error: orcamentoError } = await supabase
+        .from('orcamentos')
+        .insert([orcamentoData])
+        .select()
+        .single();
+      
+      if (orcamentoError) throw orcamentoError;
+      
+      // Then create the items
+      if (items && items.length > 0) {
+        const itemsData = items.map((item: any) => ({
+          orcamento_id: orcamento.id,
+          product_name: item.name,
+          price: parseFloat(item.price),
+          quantity: item.quantity
+        }));
+        
+        const { error: itemsError } = await supabase
+          .from('orcamento_items')
+          .insert(itemsData);
+        
+        if (itemsError) throw itemsError;
+      }
+      
+      return orcamento;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
+      addLog('create', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
+    }
+  });
+
+  // Update budget mutation
+  const updateBudgetMutation = useMutation({
+    mutationFn: async (budgetData: any) => {
+      const { items, id, ...orcamentoData } = budgetData;
+      
+      // Update the budget
+      const { data: orcamento, error: orcamentoError } = await supabase
+        .from('orcamentos')
+        .update(orcamentoData)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (orcamentoError) throw orcamentoError;
+      
+      // Delete existing items
+      await supabase
+        .from('orcamento_items')
+        .delete()
+        .eq('orcamento_id', id);
+      
+      // Insert new items
+      if (items && items.length > 0) {
+        const itemsData = items.map((item: any) => ({
+          orcamento_id: id,
+          product_name: item.name,
+          price: parseFloat(item.price),
+          quantity: item.quantity
+        }));
+        
+        const { error: itemsError } = await supabase
+          .from('orcamento_items')
+          .insert(itemsData);
+        
+        if (itemsError) throw itemsError;
+      }
+      
+      return orcamento;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
+      addLog('edit', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
+    }
+  });
+
+  // Delete budget mutation
+  const deleteBudgetMutation = useMutation({
+    mutationFn: async (budgetId: string) => {
+      const { error } = await supabase
+        .from('orcamentos')
+        .delete()
+        .eq('id', budgetId);
+      
+      if (error) throw error;
+      return budgetId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
+    }
+  });
+
+  // Update status mutation
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { data, error } = await supabase
+        .from('orcamentos')
+        .update({ status })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
+      addLog('edit', 'orcamento', data.title, `Status alterado para: ${data.status}`);
+    }
+  });
 
   const formatCurrency = (value: any) => {
-    // Se já está formatado como string, retorna como está
-    if (typeof value === 'string' && value.includes('R$')) {
-      return value;
-    }
-    
-    // Se é número, formata
-    if (typeof value === 'number') {
-      return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL'
-      }).format(value);
-    }
-    
-    // Se é string com número, converte e formata
-    const numericValue = parseFloat(value.toString().replace(/[^\d.,]/g, '').replace(',', '.'));
-    if (isNaN(numericValue)) return value;
-    
+    const numericValue = typeof value === 'number' ? value : parseFloat(value || 0);
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     }).format(numericValue);
   };
 
-  const handleSaveBudget = (budgetData: any) => {
-    if (editingBudget) {
-      setBudgets(budgets.map(budget => 
-        budget.id === editingBudget.id ? budgetData : budget
-      ));
-      addLog('edit', 'orcamento', budgetData.title, `Cliente: ${budgetData.client} - Total: ${budgetData.total}`);
-      setEditingBudget(null);
-    } else {
-      setBudgets([...budgets, budgetData]);
-      addLog('create', 'orcamento', budgetData.title, `Cliente: ${budgetData.client} - Total: ${budgetData.total}`);
-    }
-    
-    // Dispara um evento customizado para notificar outros componentes
-    window.dispatchEvent(new CustomEvent('budgetCreated'));
-  };
-
-  const handleDeleteBudget = (budgetId: number) => {
-    const budget = budgets.find(b => b.id === budgetId);
-    if (budget) {
-      setBudgets(budgets.filter(budget => budget.id !== budgetId));
-      addLog('delete', 'orcamento', budget.title, `Cliente: ${budget.client}`);
-      
-      // Dispara um evento customizado para notificar outros componentes
-      window.dispatchEvent(new CustomEvent('budgetCreated'));
+  const handleSaveBudget = async (budgetData: any) => {
+    try {
+      if (editingBudget) {
+        await updateBudgetMutation.mutateAsync({ ...budgetData, id: editingBudget.id });
+        setEditingBudget(null);
+      } else {
+        await createBudgetMutation.mutateAsync(budgetData);
+      }
+      setModalOpen(false);
+    } catch (error) {
+      console.error('Error saving budget:', error);
     }
   };
 
-  const handleStatusChange = (budgetId: number, newStatus: string) => {
+  const handleDeleteBudget = async (budgetId: string) => {
     const budget = budgets.find(b => b.id === budgetId);
     if (budget) {
-      setBudgets(budgets.map(budget => 
-        budget.id === budgetId ? { ...budget, status: newStatus } : budget
-      ));
-      addLog('edit', 'orcamento', budget.title, `Status alterado para: ${newStatus}`);
-      
-      // Dispara um evento customizado para notificar outros componentes
-      window.dispatchEvent(new CustomEvent('budgetCreated'));
+      try {
+        await deleteBudgetMutation.mutateAsync(budgetId);
+        addLog('delete', 'orcamento', budget.title, `Cliente: ${budget.client_name}`);
+      } catch (error) {
+        console.error('Error deleting budget:', error);
+      }
+    }
+  };
+
+  const handleStatusChange = async (budgetId: string, newStatus: string) => {
+    try {
+      await updateStatusMutation.mutateAsync({ id: budgetId, status: newStatus });
+    } catch (error) {
+      console.error('Error updating status:', error);
     }
   };
 
   const handleEditBudget = (budget: any) => {
-    setEditingBudget(budget);
+    // Transform the budget data to match the modal's expected format
+    const transformedBudget = {
+      ...budget,
+      items: budget.orcamento_items || []
+    };
+    setEditingBudget(transformedBudget);
     setModalOpen(true);
   };
 
@@ -121,6 +246,14 @@ export function Orcamentos() {
         return 'bg-gray-600 text-white border-gray-600';
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 bg-crm-dark min-h-screen flex items-center justify-center">
+        <div className="text-white">Carregando orçamentos...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-crm-dark min-h-screen">
@@ -176,8 +309,8 @@ export function Orcamentos() {
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                  <p className="text-gray-400">{budget.client}</p>
-                  <p className="text-gray-400 text-sm">{budget.date}</p>
+                  <p className="text-gray-400">{budget.client_name}</p>
+                  <p className="text-gray-400 text-sm">{new Date(budget.date).toLocaleDateString('pt-BR')}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-gray-400 text-sm">Total do Orçamento</p>
@@ -188,10 +321,10 @@ export function Orcamentos() {
               <div className="mt-6">
                 <h4 className="text-white font-medium mb-3">Itens do Orçamento:</h4>
                 <div className="space-y-2">
-                  {budget.items.map((item, index) => (
+                  {budget.orcamento_items?.map((item, index) => (
                     <div key={index} className="flex justify-between text-gray-300">
-                      <span>({item.quantity}x) - {item.name}</span>
-                      <span>{formatCurrency(parseFloat(item.price) * item.quantity)}</span>
+                      <span>({item.quantity}x) - {item.product_name}</span>
+                      <span>{formatCurrency(item.subtotal)}</span>
                     </div>
                   ))}
                 </div>

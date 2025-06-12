@@ -1,46 +1,42 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, User, Package, DollarSign } from "lucide-react";
 import { format, isAfter, isSameDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 export function Agenda() {
-  const [budgets, setBudgets] = useState([]);
-
-  useEffect(() => {
-    // Carrega orçamentos do localStorage
-    const savedBudgets = localStorage.getItem('orcamentos');
-    if (savedBudgets) {
-      setBudgets(JSON.parse(savedBudgets));
+  // Fetch budgets with delivery dates from Supabase
+  const { data: budgets = [], isLoading } = useQuery({
+    queryKey: ['orcamentos-agenda'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('orcamentos')
+        .select(`
+          *,
+          orcamento_items (
+            id,
+            product_name,
+            price,
+            quantity,
+            subtotal
+          )
+        `)
+        .eq('status', 'Aguardando')
+        .not('date', 'is', null)
+        .order('date', { ascending: true });
+      
+      if (error) throw error;
+      return data;
     }
-
-    // Escuta por mudanças nos orçamentos
-    const handleBudgetUpdate = () => {
-      const updatedBudgets = localStorage.getItem('orcamentos');
-      if (updatedBudgets) {
-        setBudgets(JSON.parse(updatedBudgets));
-      }
-    };
-
-    window.addEventListener('budgetCreated', handleBudgetUpdate);
-    return () => window.removeEventListener('budgetCreated', handleBudgetUpdate);
-  }, []);
-
-  // Filtra apenas orçamentos "Aguardando" com data de entrega
-  const pendingDeliveries = budgets.filter(budget => 
-    budget.status === "Aguardando" && budget.deliveryDate
-  );
-
-  // Ordena por data de entrega
-  const sortedDeliveries = pendingDeliveries.sort((a, b) => {
-    return new Date(a.deliveryDate).getTime() - new Date(b.deliveryDate).getTime();
   });
 
   const getDeliveryStatus = (deliveryDate: string) => {
     const today = new Date();
-    const delivery = parseISO(deliveryDate);
+    const delivery = new Date(deliveryDate);
     
     if (isSameDay(delivery, today)) {
       return { status: "hoje", color: "bg-yellow-600 text-white" };
@@ -52,7 +48,7 @@ export function Agenda() {
   };
 
   const formatDeliveryDate = (dateString: string) => {
-    const date = parseISO(dateString);
+    const date = new Date(dateString);
     return format(date, "dd/MM/yyyy", { locale: ptBR });
   };
 
@@ -70,8 +66,23 @@ export function Agenda() {
   };
 
   const getTotalQuantity = (items: any[]) => {
-    return items.reduce((total, item) => total + item.quantity, 0);
+    return items?.reduce((total, item) => total + item.quantity, 0) || 0;
   };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 bg-crm-dark min-h-screen flex items-center justify-center">
+        <div className="text-white">Carregando agenda...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-crm-dark min-h-screen">
@@ -80,7 +91,7 @@ export function Agenda() {
         <h1 className="text-3xl font-bold text-white">Agenda de Entregas</h1>
       </div>
 
-      {sortedDeliveries.length === 0 ? (
+      {budgets.length === 0 ? (
         <Card className="bg-crm-card border-crm-border">
           <CardContent className="p-8 text-center">
             <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -92,8 +103,8 @@ export function Agenda() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sortedDeliveries.map((budget) => {
-            const deliveryStatus = getDeliveryStatus(budget.deliveryDate);
+          {budgets.map((budget) => {
+            const deliveryStatus = getDeliveryStatus(budget.date);
             
             return (
               <Card key={budget.id} className="bg-crm-card border-crm-border hover:bg-crm-card/80 transition-colors">
@@ -108,41 +119,38 @@ export function Agenda() {
                 <CardContent className="space-y-4">
                   <div className="flex items-center gap-2 text-gray-300">
                     <User className="h-4 w-4" />
-                    <span className="font-medium">{budget.client}</span>
+                    <span className="font-medium">{budget.client_name}</span>
                   </div>
                   
                   <div className="flex items-center gap-2 text-gray-300">
                     <Clock className="h-4 w-4" />
-                    <span>Entrega: {formatDeliveryDate(budget.deliveryDate)}</span>
+                    <span>Entrega: {formatDeliveryDate(budget.date)}</span>
                   </div>
                   
                   <div className="flex items-center gap-2 text-gray-300">
                     <Package className="h-4 w-4" />
-                    <span>Quantidade: {getTotalQuantity(budget.items)} itens</span>
+                    <span>Quantidade: {getTotalQuantity(budget.orcamento_items)} itens</span>
                   </div>
                   
                   <div className="flex items-center gap-2 text-blue-400">
                     <DollarSign className="h-4 w-4" />
-                    <span className="font-semibold">{budget.total}</span>
+                    <span className="font-semibold">{formatCurrency(parseFloat(budget.total))}</span>
                   </div>
                   
                   <div className="pt-2 border-t border-crm-border">
                     <p className="text-gray-400 text-sm mb-2">Produtos:</p>
                     <div className="space-y-1">
-                      {budget.items.slice(0, 3).map((item, index) => (
+                      {budget.orcamento_items?.slice(0, 3).map((item, index) => (
                         <div key={index} className="text-sm text-gray-300 flex justify-between">
-                          <span>{item.quantity}x {item.name}</span>
+                          <span>{item.quantity}x {item.product_name}</span>
                           <span className="text-gray-400">
-                            {new Intl.NumberFormat('pt-BR', {
-                              style: 'currency',
-                              currency: 'BRL'
-                            }).format(parseFloat(item.price) * item.quantity)}
+                            {formatCurrency(parseFloat(item.subtotal || 0))}
                           </span>
                         </div>
                       ))}
-                      {budget.items.length > 3 && (
+                      {budget.orcamento_items && budget.orcamento_items.length > 3 && (
                         <div className="text-sm text-gray-400">
-                          +{budget.items.length - 3} produto(s)
+                          +{budget.orcamento_items.length - 3} produto(s)
                         </div>
                       )}
                     </div>

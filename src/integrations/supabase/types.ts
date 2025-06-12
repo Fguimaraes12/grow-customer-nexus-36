@@ -9,10 +9,61 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      agenda: {
+        Row: {
+          client_id: string | null
+          client_name: string | null
+          created_at: string
+          description: string | null
+          end_time: string
+          id: string
+          location: string | null
+          start_time: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string
+          description?: string | null
+          end_time: string
+          id?: string
+          location?: string | null
+          start_time: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string
+          description?: string | null
+          end_time?: string
+          id?: string
+          location?: string | null
+          start_time?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           address: string
           created_at: string
+          email: string | null
           id: string
           name: string
           phone: string
@@ -21,6 +72,7 @@ export type Database = {
         Insert: {
           address: string
           created_at?: string
+          email?: string | null
           id?: string
           name: string
           phone: string
@@ -29,6 +81,7 @@ export type Database = {
         Update: {
           address?: string
           created_at?: string
+          email?: string | null
           id?: string
           name?: string
           phone?: string
@@ -38,24 +91,30 @@ export type Database = {
       }
       despesas: {
         Row: {
+          category: string | null
           created_at: string
           date: string
+          description: string | null
           id: string
           title: string
           updated_at: string
           value: number
         }
         Insert: {
+          category?: string | null
           created_at?: string
           date: string
+          description?: string | null
           id?: string
           title: string
           updated_at?: string
           value: number
         }
         Update: {
+          category?: string | null
           created_at?: string
           date?: string
+          description?: string | null
           id?: string
           title?: string
           updated_at?: string
@@ -65,31 +124,88 @@ export type Database = {
       }
       faturas: {
         Row: {
+          client_id: string | null
           client_name: string
           created_at: string
           date: string
           id: string
+          orcamento_id: string | null
+          status: string
           title: string
           updated_at: string
           value: number
         }
         Insert: {
+          client_id?: string | null
           client_name: string
           created_at?: string
           date: string
           id?: string
+          orcamento_id?: string | null
+          status?: string
           title: string
           updated_at?: string
           value: number
         }
         Update: {
+          client_id?: string | null
           client_name?: string
           created_at?: string
           date?: string
           id?: string
+          orcamento_id?: string | null
+          status?: string
           title?: string
           updated_at?: string
           value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faturas_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faturas_orcamento_id_fkey"
+            columns: ["orcamento_id"]
+            isOneToOne: false
+            referencedRelation: "orcamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      logs: {
+        Row: {
+          action: string
+          description: string | null
+          entity_id: string | null
+          entity_name: string | null
+          entity_type: string
+          id: string
+          timestamp: string
+          user_name: string | null
+        }
+        Insert: {
+          action: string
+          description?: string | null
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type: string
+          id?: string
+          timestamp?: string
+          user_name?: string | null
+        }
+        Update: {
+          action?: string
+          description?: string | null
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type?: string
+          id?: string
+          timestamp?: string
+          user_name?: string | null
         }
         Relationships: []
       }
@@ -101,6 +217,7 @@ export type Database = {
           price: number
           product_name: string
           quantity: number
+          subtotal: number | null
         }
         Insert: {
           created_at?: string
@@ -109,6 +226,7 @@ export type Database = {
           price: number
           product_name: string
           quantity?: number
+          subtotal?: number | null
         }
         Update: {
           created_at?: string
@@ -117,6 +235,7 @@ export type Database = {
           price?: number
           product_name?: string
           quantity?: number
+          subtotal?: number | null
         }
         Relationships: [
           {
@@ -130,8 +249,10 @@ export type Database = {
       }
       orcamentos: {
         Row: {
+          client_id: string | null
           client_name: string
           created_at: string
+          date: string
           id: string
           status: string
           title: string
@@ -139,42 +260,60 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          client_id?: string | null
           client_name: string
           created_at?: string
+          date?: string
           id?: string
           status?: string
           title: string
-          total: number
+          total?: number
           updated_at?: string
         }
         Update: {
+          client_id?: string | null
           client_name?: string
           created_at?: string
+          date?: string
           id?: string
           status?: string
           title?: string
           total?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orcamentos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       produtos: {
         Row: {
+          category: string | null
           created_at: string
+          description: string | null
           id: string
           name: string
           price: number
           updated_at: string
         }
         Insert: {
+          category?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           name: string
           price: number
           updated_at?: string
         }
         Update: {
+          category?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           name?: string
           price?: number

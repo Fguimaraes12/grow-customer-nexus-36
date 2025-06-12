@@ -1,59 +1,110 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Plus, Edit, Trash2, FileText } from "lucide-react";
 import { ProdutoModal } from "./modals/ProdutoModal";
 import { useLogs } from "@/contexts/LogsContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export function Produtos() {
-  const [products, setProducts] = useState(() => {
-    // Carrega produtos do localStorage na inicialização
-    const savedProducts = localStorage.getItem('produtos');
-    return savedProducts ? JSON.parse(savedProducts) : [
-      {
-        id: 1,
-        name: "Banner 2x1m",
-        price: "R$ 80.00",
-      },
-      {
-        id: 2,
-        name: "Adesivo Vinil",
-        price: "R$ 25.00",
-      },
-      {
-        id: 3,
-        name: "Placa ACM",
-        price: "R$ 150.00",
-      },
-    ];
-  });
-
   const [searchTerm, setSearchTerm] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const { addLog } = useLogs();
+  const queryClient = useQueryClient();
 
-  // Salva produtos no localStorage sempre que a lista muda
-  useEffect(() => {
-    localStorage.setItem('produtos', JSON.stringify(products));
-  }, [products]);
+  // Fetch products from Supabase
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ['produtos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('produtos')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Create product mutation
+  const createProductMutation = useMutation({
+    mutationFn: async (productData: any) => {
+      const { data, error } = await supabase
+        .from('produtos')
+        .insert([productData])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['produtos'] });
+      addLog('create', 'produto', data.name);
+    }
+  });
+
+  // Update product mutation
+  const updateProductMutation = useMutation({
+    mutationFn: async ({ id, ...productData }: any) => {
+      const { data, error } = await supabase
+        .from('produtos')
+        .update(productData)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['produtos'] });
+      addLog('edit', 'produto', data.name);
+    }
+  });
+
+  // Delete product mutation
+  const deleteProductMutation = useMutation({
+    mutationFn: async (productId: string) => {
+      const { error } = await supabase
+        .from('produtos')
+        .delete()
+        .eq('id', productId);
+      
+      if (error) throw error;
+      return productId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['produtos'] });
+    }
+  });
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
 
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleSaveProduct = (productData: any) => {
-    if (editingProduct) {
-      setProducts(products.map(product => 
-        product.id === editingProduct.id ? productData : product
-      ));
-      addLog('edit', 'produto', productData.name);
-      setEditingProduct(null);
-    } else {
-      setProducts([...products, productData]);
-      addLog('create', 'produto', productData.name);
+  const handleSaveProduct = async (productData: any) => {
+    try {
+      if (editingProduct) {
+        await updateProductMutation.mutateAsync({ ...productData, id: editingProduct.id });
+        setEditingProduct(null);
+      } else {
+        await createProductMutation.mutateAsync(productData);
+      }
+      setModalOpen(false);
+    } catch (error) {
+      console.error('Error saving product:', error);
     }
   };
 
@@ -62,11 +113,15 @@ export function Produtos() {
     setModalOpen(true);
   };
 
-  const handleDeleteProduct = (productId: number) => {
+  const handleDeleteProduct = async (productId: string) => {
     const product = products.find(p => p.id === productId);
     if (product) {
-      setProducts(products.filter(product => product.id !== productId));
-      addLog('delete', 'produto', product.name);
+      try {
+        await deleteProductMutation.mutateAsync(productId);
+        addLog('delete', 'produto', product.name);
+      } catch (error) {
+        console.error('Error deleting product:', error);
+      }
     }
   };
 
@@ -74,6 +129,14 @@ export function Produtos() {
     setEditingProduct(null);
     setModalOpen(true);
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 bg-crm-dark min-h-screen flex items-center justify-center">
+        <div className="text-white">Carregando produtos...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-crm-dark min-h-screen">
@@ -108,7 +171,7 @@ export function Produtos() {
                   </div>
                   <div>
                     <h3 className="text-white font-semibold">{product.name}</h3>
-                    <p className="text-green-400 font-bold text-lg">{product.price}</p>
+                    <p className="text-green-400 font-bold text-lg">{formatCurrency(parseFloat(product.price))}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
