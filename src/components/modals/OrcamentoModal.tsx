@@ -91,13 +91,33 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
   };
 
   const parseDateToISO = (dateString: string) => {
-    if (!dateString || dateString.length !== 10) return null;
+    if (!dateString) return null;
     
-    const [day, month, year] = dateString.split('/');
+    // Aceita tanto DD/MM/AA quanto DD/MM/AAAA
+    const parts = dateString.split('/');
+    if (parts.length !== 3) return null;
+    
+    const [day, month, year] = parts;
     if (!day || !month || !year) return null;
     
+    // Converte ano de 2 dígitos para 4 dígitos
+    let fullYear = year;
+    if (year.length === 2) {
+      const currentYear = new Date().getFullYear();
+      const currentCentury = Math.floor(currentYear / 100) * 100;
+      const yearNumber = parseInt(year);
+      
+      // Se o ano de 2 dígitos for maior que os últimos 2 dígitos do ano atual + 10,
+      // assume século anterior, senão assume século atual
+      if (yearNumber > (currentYear % 100) + 10) {
+        fullYear = (currentCentury - 100 + yearNumber).toString();
+      } else {
+        fullYear = (currentCentury + yearNumber).toString();
+      }
+    }
+    
     // Cria a data no formato ISO
-    const isoDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    const isoDate = new Date(parseInt(fullYear), parseInt(month) - 1, parseInt(day));
     return isoDate.toISOString();
   };
 
