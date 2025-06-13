@@ -12,7 +12,7 @@ export function Orcamentos() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
   const { addLog } = useLogs();
   const queryClient = useQueryClient();
 
@@ -85,7 +85,7 @@ export function Orcamentos() {
     staleTime: 0, // Sempre busca dados frescos
     cacheTime: 300000, // Mantém no cache por 5 minutos
     refetchOnWindowFocus: true, // Refetch quando a janela recebe foco
-    refetchInterval: autoRefreshEnabled ? 30000 : false, // Auto-refresh a cada 30 segundos
+    refetchInterval: false, // Auto-refresh desabilitado
   });
 
   // Fetch clients for the modal
@@ -411,21 +411,6 @@ export function Orcamentos() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-white">Orçamentos</h1>
         <div className="flex gap-2 items-center">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400">Auto-atualização:</span>
-            <Button 
-              onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
-              variant={autoRefreshEnabled ? "default" : "outline"}
-              size="sm"
-              className={autoRefreshEnabled 
-                ? "bg-green-600 hover:bg-green-700 text-white" 
-                : "border-gray-600 text-gray-300 hover:bg-gray-700"
-              }
-            >
-              <RefreshCw className={`h-3 w-3 mr-1 ${autoRefreshEnabled ? 'animate-spin' : ''}`} />
-              {autoRefreshEnabled ? 'Ativada' : 'Desativada'}
-            </Button>
-          </div>
           <Button 
             onClick={handleRefresh}
             disabled={isRefreshing}
@@ -433,7 +418,7 @@ export function Orcamentos() {
             className="border-gray-600 text-gray-300 hover:bg-gray-700"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Atualizar Agora
+            Atualizar Lista
           </Button>
           <Button 
             onClick={() => {
@@ -457,16 +442,6 @@ export function Orcamentos() {
             {createBudgetMutation.isLoading && 'Criando orçamento...'}
             {updateBudgetMutation.isLoading && 'Atualizando orçamento...'}
             {isRefreshing && !createBudgetMutation.isLoading && !updateBudgetMutation.isLoading && 'Atualizando lista...'}
-          </div>
-        </div>
-      )}
-
-      {/* Auto-refresh status */}
-      {autoRefreshEnabled && (
-        <div className="mb-4 p-2 bg-green-600/10 border border-green-600/20 rounded-lg">
-          <div className="text-green-400 text-xs flex items-center">
-            <RefreshCw className="h-3 w-3 mr-2 animate-spin" />
-            Auto-atualização ativa - Lista atualiza a cada 30 segundos
           </div>
         </div>
       )}
