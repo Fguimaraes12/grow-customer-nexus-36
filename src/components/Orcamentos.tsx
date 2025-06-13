@@ -376,7 +376,9 @@ export function Orcamentos() {
           Novo Orçamento
         </Button>
       </div>
-
+<Button onClick={() => refetch()} className="ml-2">
+  Recarregar Lista
+</Button>
       {/* Debug: Mostrar quantos orçamentos temos */}
       <div className="mb-4 text-white text-sm">
         Total de orçamentos: {budgets.length}
