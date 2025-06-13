@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Edit } from "lucide-react";
+import { Plus, Trash2, Edit, RefreshCw } from "lucide-react";
 import { OrcamentoModal } from "./modals/OrcamentoModal";
 import { useLogs } from "@/contexts/LogsContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 export function Orcamentos() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { addLog } = useLogs();
   const queryClient = useQueryClient();
 
@@ -41,7 +42,7 @@ export function Orcamentos() {
     return isoDate.split('-').reverse().join('/');
   };
 
-  // SOLUÇÃO 1: Query mais simples, sem configurações que podem causar conflito
+  // Query para buscar orçamentos
   const { data: budgets = [], isLoading, refetch } = useQuery({
     queryKey: ['orcamentos'],
     queryFn: async () => {
@@ -67,7 +68,9 @@ export function Orcamentos() {
       
       console.log('Orçamentos carregados:', data);
       return data;
-    }
+    },
+    staleTime: 30000, // Considera os dados "frescos" por 30 segundos
+    cacheTime: 300000, // Mantém no cache por 5 minutos
   });
 
   // Fetch clients for the modal
@@ -98,15 +101,25 @@ export function Orcamentos() {
     }
   });
 
-  // SOLUÇÃO 2: Mutation mais simples com refetch direto
+  // Função para refetch com loading state
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Create budget mutation
   const createBudgetMutation = useMutation({
-    mutationFn: async (budgetData: any) => {
+    mutationFn: async (budgetData) => {
       console.log('Criando novo orçamento:', budgetData);
       
       const { items, ...orcamentoData } = budgetData;
       
       // Calculate total from items
-      const totalValue = items.reduce((total: number, item: any) => {
+      const totalValue = items.reduce((total, item) => {
         const itemPrice = typeof item.price === 'string' 
           ? parseFloat(item.price.replace(',', '.'))
           : item.price;
@@ -140,7 +153,7 @@ export function Orcamentos() {
       
       // Then create the items
       if (items && items.length > 0) {
-        const itemsData = items.map((item: any) => {
+        const itemsData = items.map((item) => {
           const itemPrice = typeof item.price === 'string' 
             ? parseFloat(item.price.replace(',', '.'))
             : item.price;
@@ -170,13 +183,17 @@ export function Orcamentos() {
       
       return orcamento;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('Orçamento salvo com sucesso, atualizando lista...');
       
-      // SOLUÇÃO 3: Usar apenas refetch, mais direto e confiável
-      refetch().then(() => {
+      // Refetch para garantir que a lista seja atualizada
+      setIsRefreshing(true);
+      try {
+        await refetch();
         console.log('Lista atualizada com sucesso');
-      });
+      } finally {
+        setIsRefreshing(false);
+      }
       
       addLog('create', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
       setModalOpen(false);
@@ -184,16 +201,17 @@ export function Orcamentos() {
     },
     onError: (error) => {
       console.error('Erro ao criar orçamento:', error);
+      setIsRefreshing(false);
     }
   });
 
   // Update budget mutation
   const updateBudgetMutation = useMutation({
-    mutationFn: async (budgetData: any) => {
+    mutationFn: async (budgetData) => {
       const { items, id, ...orcamentoData } = budgetData;
       
       // Calculate total from items
-      const totalValue = items.reduce((total: number, item: any) => {
+      const totalValue = items.reduce((total, item) => {
         const itemPrice = typeof item.price === 'string' 
           ? parseFloat(item.price.replace(',', '.'))
           : item.price;
@@ -223,7 +241,7 @@ export function Orcamentos() {
       
       // Insert new items
       if (items && items.length > 0) {
-        const itemsData = items.map((item: any) => {
+        const itemsData = items.map((item) => {
           const itemPrice = typeof item.price === 'string' 
             ? parseFloat(item.price.replace(',', '.'))
             : item.price;
@@ -246,17 +264,25 @@ export function Orcamentos() {
       
       return orcamento;
     },
-    onSuccess: (data) => {
-      refetch();
+    onSuccess: async (data) => {
+      setIsRefreshing(true);
+      try {
+        await refetch();
+      } finally {
+        setIsRefreshing(false);
+      }
       addLog('edit', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
       setModalOpen(false);
       setEditingBudget(null);
+    },
+    onError: () => {
+      setIsRefreshing(false);
     }
   });
 
   // Delete budget mutation
   const deleteBudgetMutation = useMutation({
-    mutationFn: async (budgetId: string) => {
+    mutationFn: async (budgetId) => {
       const { error } = await supabase
         .from('orcamentos')
         .delete()
@@ -265,14 +291,22 @@ export function Orcamentos() {
       if (error) throw error;
       return budgetId;
     },
-    onSuccess: () => {
-      refetch();
+    onSuccess: async () => {
+      setIsRefreshing(true);
+      try {
+        await refetch();
+      } finally {
+        setIsRefreshing(false);
+      }
+    },
+    onError: () => {
+      setIsRefreshing(false);
     }
   });
 
   // Update status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status }) => {
       const { data, error } = await supabase
         .from('orcamentos')
         .update({ status })
@@ -283,13 +317,21 @@ export function Orcamentos() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
-      refetch();
+    onSuccess: async (data) => {
+      setIsRefreshing(true);
+      try {
+        await refetch();
+      } finally {
+        setIsRefreshing(false);
+      }
       addLog('edit', 'orcamento', data.title, `Status alterado para: ${data.status}`);
+    },
+    onError: () => {
+      setIsRefreshing(false);
     }
   });
 
-  const formatCurrency = (value: any) => {
+  const formatCurrency = (value) => {
     const numericValue = typeof value === 'number' ? value : parseFloat(value || 0);
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -297,7 +339,7 @@ export function Orcamentos() {
     }).format(numericValue);
   };
 
-  const handleSaveBudget = async (budgetData: any) => {
+  const handleSaveBudget = async (budgetData) => {
     try {
       console.log('Salvando orçamento:', budgetData);
       
@@ -311,7 +353,7 @@ export function Orcamentos() {
     }
   };
 
-  const handleDeleteBudget = async (budgetId: string) => {
+  const handleDeleteBudget = async (budgetId) => {
     const budget = budgets.find(b => b.id === budgetId);
     if (budget) {
       try {
@@ -323,7 +365,7 @@ export function Orcamentos() {
     }
   };
 
-  const handleStatusChange = async (budgetId: string, newStatus: string) => {
+  const handleStatusChange = async (budgetId, newStatus) => {
     try {
       await updateStatusMutation.mutateAsync({ id: budgetId, status: newStatus });
     } catch (error) {
@@ -331,7 +373,7 @@ export function Orcamentos() {
     }
   };
 
-  const handleEditBudget = (budget: any) => {
+  const handleEditBudget = (budget) => {
     // Transform the budget data to match the modal's expected format
     const transformedBudget = {
       ...budget,
@@ -342,7 +384,7 @@ export function Orcamentos() {
     setModalOpen(true);
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status) => {
     switch (status) {
       case 'Finalizado':
         return 'bg-green-600 text-white border-green-600';
@@ -365,20 +407,42 @@ export function Orcamentos() {
     <div className="p-6 bg-crm-dark min-h-screen">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-white">Orçamentos</h1>
-        <Button 
-          onClick={() => {
-            setEditingBudget(null);
-            setModalOpen(true);
-          }}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Orçamento
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            variant="outline"
+            className="border-gray-600 text-gray-300 hover:bg-gray-700"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Atualizando...' : 'Atualizar'}
+          </Button>
+          <Button 
+            onClick={() => {
+              setEditingBudget(null);
+              setModalOpen(true);
+            }}
+            className="bg-blue-600 hover:bg-blue-700"
+            disabled={createBudgetMutation.isLoading}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            {createBudgetMutation.isLoading ? 'Criando...' : 'Novo Orçamento'}
+          </Button>
+        </div>
       </div>
-<Button onClick={() => refetch()} className="ml-2">
-  Recarregar Lista
-</Button>
+
+      {/* Status indicator */}
+      {(isRefreshing || createBudgetMutation.isLoading || updateBudgetMutation.isLoading) && (
+        <div className="mb-4 p-3 bg-blue-600/20 border border-blue-600/30 rounded-lg">
+          <div className="text-blue-400 text-sm flex items-center">
+            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+            {createBudgetMutation.isLoading && 'Criando orçamento...'}
+            {updateBudgetMutation.isLoading && 'Atualizando orçamento...'}
+            {isRefreshing && !createBudgetMutation.isLoading && !updateBudgetMutation.isLoading && 'Atualizando lista...'}
+          </div>
+        </div>
+      )}
+
       {/* Debug: Mostrar quantos orçamentos temos */}
       <div className="mb-4 text-white text-sm">
         Total de orçamentos: {budgets.length}
@@ -396,6 +460,7 @@ export function Orcamentos() {
                     <Select
                       value={budget.status}
                       onValueChange={(value) => handleStatusChange(budget.id, value)}
+                      disabled={updateStatusMutation.isLoading}
                     >
                       <SelectTrigger className={`w-32 ${getStatusColor(budget.status)} border-none`}>
                         <SelectValue />
@@ -410,6 +475,7 @@ export function Orcamentos() {
                       variant="ghost" 
                       onClick={() => handleEditBudget(budget)}
                       className="text-gray-400 hover:text-blue-400"
+                      disabled={updateBudgetMutation.isLoading}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -418,6 +484,7 @@ export function Orcamentos() {
                       variant="ghost" 
                       onClick={() => handleDeleteBudget(budget.id)}
                       className="text-gray-400 hover:text-red-400"
+                      disabled={deleteBudgetMutation.isLoading}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
