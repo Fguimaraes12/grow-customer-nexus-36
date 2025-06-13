@@ -19,16 +19,19 @@ export function Orcamentos() {
     if (!brazilianDate) return new Date().toISOString().split('T')[0];
     
     // Se já está no formato ISO (yyyy-mm-dd), retorna como está
-    if (brazilianDate.includes('-') && brazilianDate.length === 10) {
+    if (brazilianDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
       return brazilianDate;
     }
     
     // Se está no formato brasileiro (dd/mm/yyyy), converte
-    if (brazilianDate.includes('/')) {
+    if (brazilianDate.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
       const [day, month, year] = brazilianDate.split('/');
-      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      const formattedDay = day.padStart(2, '0');
+      const formattedMonth = month.padStart(2, '0');
+      return `${year}-${formattedMonth}-${formattedDay}`;
     }
     
+    // Fallback para data atual
     return new Date().toISOString().split('T')[0];
   };
 
@@ -58,7 +61,11 @@ export function Orcamentos() {
       
       if (error) throw error;
       return data;
-    }
+    },
+    staleTime: 0, // Dados sempre considerados stale
+    cacheTime: 1000 * 60 * 5, // Cache por 5 minutos
+    refetchOnMount: true,
+    refetchOnWindowFocus: true
   });
 
   // Fetch clients for the modal
@@ -149,13 +156,23 @@ export function Orcamentos() {
       
       return orcamento;
     },
-    onSuccess: (data) => {
-      // Força uma nova consulta para garantir que a lista seja atualizada
-      queryClient.refetchQueries({ queryKey: ['orcamentos'] });
-      queryClient.invalidateQueries({ queryKey: ['orcamentos-agenda'] });
+    onSuccess: async (data) => {
+      // Primeiro, invalida as queries
+      await queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
+      await queryClient.invalidateQueries({ queryKey: ['orcamentos-agenda'] });
+      
+      // Depois força o refetch
+      await queryClient.refetchQueries({ queryKey: ['orcamentos'] });
+      
+      // Log da operação
       addLog('create', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
+      
+      // Limpa os estados
       setModalOpen(false);
       setEditingBudget(null);
+    },
+    onError: (error) => {
+      console.error('Error creating budget:', error);
     }
   });
 
@@ -218,12 +235,17 @@ export function Orcamentos() {
       
       return orcamento;
     },
-    onSuccess: (data) => {
-      queryClient.refetchQueries({ queryKey: ['orcamentos'] });
-      queryClient.invalidateQueries({ queryKey: ['orcamentos-agenda'] });
+    onSuccess: async (data) => {
+      await queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
+      await queryClient.invalidateQueries({ queryKey: ['orcamentos-agenda'] });
+      await queryClient.refetchQueries({ queryKey: ['orcamentos'] });
+      
       addLog('edit', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
       setModalOpen(false);
       setEditingBudget(null);
+    },
+    onError: (error) => {
+      console.error('Error updating budget:', error);
     }
   });
 
@@ -238,8 +260,12 @@ export function Orcamentos() {
       if (error) throw error;
       return budgetId;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
+      await queryClient.refetchQueries({ queryKey: ['orcamentos'] });
+    },
+    onError: (error) => {
+      console.error('Error deleting budget:', error);
     }
   });
 
@@ -256,9 +282,13 @@ export function Orcamentos() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
+    onSuccess: async (data) => {
+      await queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
+      await queryClient.refetchQueries({ queryKey: ['orcamentos'] });
       addLog('edit', 'orcamento', data.title, `Status alterado para: ${data.status}`);
+    },
+    onError: (error) => {
+      console.error('Error updating status:', error);
     }
   });
 
@@ -273,6 +303,7 @@ export function Orcamentos() {
   const handleSaveBudget = async (budgetData: any) => {
     try {
       console.log('Saving budget:', budgetData);
+      
       if (editingBudget) {
         await updateBudgetMutation.mutateAsync({ ...budgetData, id: editingBudget.id });
       } else {
