@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -82,7 +83,7 @@ export function Orcamentos() {
       const dataToInsert = {
         title: orcamentoData.title || `Orçamento #${Date.now()}`,
         client_name: orcamentoData.client,
-        date: orcamentoData.deliveryDate ? new Date(orcamentoData.deliveryDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        date: orcamentoData.deliveryDate || new Date().toISOString().split('T')[0],
         total: totalValue,
         status: orcamentoData.status || 'Aguardando'
       };
@@ -126,8 +127,13 @@ export function Orcamentos() {
       return orcamento;
     },
     onSuccess: (data) => {
+      // Invalidate and refetch budgets to ensure the list updates immediately
+      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
+      // Also invalidate dashboard queries to update stats
       queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
       addLog('create', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
+      setModalOpen(false);
+      setEditingBudget(null);
     }
   });
 
@@ -136,10 +142,23 @@ export function Orcamentos() {
     mutationFn: async (budgetData: any) => {
       const { items, id, ...orcamentoData } = budgetData;
       
+      // Calculate total from items
+      const totalValue = items.reduce((total: number, item: any) => {
+        const itemPrice = typeof item.price === 'string' 
+          ? parseFloat(item.price.replace(',', '.'))
+          : item.price;
+        return total + (item.quantity * itemPrice);
+      }, 0);
+
       // Update the budget
       const { data: orcamento, error: orcamentoError } = await supabase
         .from('orcamentos')
-        .update(orcamentoData)
+        .update({
+          client_name: orcamentoData.client,
+          date: orcamentoData.deliveryDate || new Date().toISOString().split('T')[0],
+          total: totalValue,
+          status: orcamentoData.status || 'Aguardando'
+        })
         .eq('id', id)
         .select()
         .single();
@@ -154,12 +173,19 @@ export function Orcamentos() {
       
       // Insert new items
       if (items && items.length > 0) {
-        const itemsData = items.map((item: any) => ({
-          orcamento_id: id,
-          product_name: item.name,
-          price: parseFloat(item.price),
-          quantity: item.quantity
-        }));
+        const itemsData = items.map((item: any) => {
+          const itemPrice = typeof item.price === 'string' 
+            ? parseFloat(item.price.replace(',', '.'))
+            : item.price;
+          
+          return {
+            orcamento_id: id,
+            product_name: item.name,
+            price: itemPrice,
+            quantity: item.quantity,
+            subtotal: item.quantity * itemPrice
+          };
+        });
         
         const { error: itemsError } = await supabase
           .from('orcamento_items')
@@ -173,6 +199,8 @@ export function Orcamentos() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
       addLog('edit', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
+      setModalOpen(false);
+      setEditingBudget(null);
     }
   });
 
@@ -224,11 +252,9 @@ export function Orcamentos() {
       console.log('Saving budget:', budgetData);
       if (editingBudget) {
         await updateBudgetMutation.mutateAsync({ ...budgetData, id: editingBudget.id });
-        setEditingBudget(null);
       } else {
         await createBudgetMutation.mutateAsync(budgetData);
       }
-      setModalOpen(false);
     } catch (error) {
       console.error('Error saving budget:', error);
     }
@@ -258,6 +284,7 @@ export function Orcamentos() {
     // Transform the budget data to match the modal's expected format
     const transformedBudget = {
       ...budget,
+      deliveryDate: budget.date,
       items: budget.orcamento_items || []
     };
     setEditingBudget(transformedBudget);

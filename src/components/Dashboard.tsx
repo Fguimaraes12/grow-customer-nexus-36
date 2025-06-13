@@ -70,12 +70,12 @@ export function Dashboard() {
     const receitasTotal = orcamentos
       .filter(budget => budget.status === 'Finalizado')
       .reduce((total, budget) => {
-        return total + parseFloat(budget.total || 0);
+        return total + parseFloat(budget.total?.toString() || '0');
       }, 0);
 
     // Calcular despesas do mês
     const despesasTotal = despesas.reduce((total, expense) => {
-      return total + parseFloat(expense.value || 0);
+      return total + parseFloat(expense.value?.toString() || '0');
     }, 0);
 
     // Contar orçamentos pendentes (status "Aguardando")
@@ -88,7 +88,7 @@ export function Dashboard() {
     const atividadesRecentes = orcamentos.slice(0, 2).map(budget => ({
       title: budget.title || 'Orçamento',
       client: budget.client_name,
-      value: formatCurrency(parseFloat(budget.total || 0)),
+      value: formatCurrency(parseFloat(budget.total?.toString() || '0')),
       date: new Date(budget.date).toLocaleDateString('pt-BR')
     }));
 

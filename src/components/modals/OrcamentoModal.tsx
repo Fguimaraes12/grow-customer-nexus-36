@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -120,9 +121,10 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
       }
     }
     
-    // Cria a data no formato ISO
-    const isoDate = new Date(parseInt(fullYear), parseInt(month) - 1, parseInt(day));
-    return isoDate.toISOString();
+    // Cria a data correta usando o construtor Date com ano, mês (0-based), dia
+    // Para evitar problemas de fuso horário, vamos criar a data em UTC
+    const isoDate = new Date(Date.UTC(parseInt(fullYear), parseInt(month) - 1, parseInt(day)));
+    return isoDate.toISOString().split('T')[0]; // Retorna apenas a parte da data (YYYY-MM-DD)
   };
 
   const addItem = () => {
