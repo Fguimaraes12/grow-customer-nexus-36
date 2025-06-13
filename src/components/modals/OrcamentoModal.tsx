@@ -189,7 +189,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
       client: selectedClient,
       date: budget?.date || new Date().toLocaleDateString('pt-BR'),
       deliveryDate: parseDateToISO(deliveryDate),
-      total: formatCurrency(totalValue),
+      total: totalValue,
       status: budget?.status || "Aguardando",
       items: validItems,
     };
