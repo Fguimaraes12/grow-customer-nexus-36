@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,8 +12,21 @@ export function Orcamentos() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const { addLog } = useLogs();
   const queryClient = useQueryClient();
+
+  // Auto-refresh a cada 30 segundos quando habilitado
+  useEffect(() => {
+    if (!autoRefreshEnabled) return;
+
+    const interval = setInterval(() => {
+      console.log('Auto-refresh executado');
+      refetch();
+    }, 30000); // 30 segundos
+
+    return () => clearInterval(interval);
+  }, [autoRefreshEnabled]);
 
   // Função para converter data brasileira (dd/mm/yyyy) para formato ISO (yyyy-mm-dd)
   const convertBrazilianDateToISO = (brazilianDate) => {
@@ -69,8 +82,10 @@ export function Orcamentos() {
       console.log('Orçamentos carregados:', data);
       return data;
     },
-    staleTime: 30000, // Considera os dados "frescos" por 30 segundos
+    staleTime: 0, // Sempre busca dados frescos
     cacheTime: 300000, // Mantém no cache por 5 minutos
+    refetchOnWindowFocus: true, // Refetch quando a janela recebe foco
+    refetchInterval: autoRefreshEnabled ? 30000 : false, // Auto-refresh a cada 30 segundos
   });
 
   // Fetch clients for the modal
@@ -184,17 +199,7 @@ export function Orcamentos() {
       return orcamento;
     },
     onSuccess: async (data) => {
-      console.log('Orçamento salvo com sucesso, atualizando lista...');
-      
-      // Refetch para garantir que a lista seja atualizada
-      setIsRefreshing(true);
-      try {
-        await refetch();
-        console.log('Lista atualizada com sucesso');
-      } finally {
-        setIsRefreshing(false);
-      }
-      
+      console.log('Orçamento salvo com sucesso, lista será atualizada automaticamente...');
       addLog('create', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
       setModalOpen(false);
       setEditingBudget(null);
@@ -265,12 +270,6 @@ export function Orcamentos() {
       return orcamento;
     },
     onSuccess: async (data) => {
-      setIsRefreshing(true);
-      try {
-        await refetch();
-      } finally {
-        setIsRefreshing(false);
-      }
       addLog('edit', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
       setModalOpen(false);
       setEditingBudget(null);
@@ -291,17 +290,9 @@ export function Orcamentos() {
       if (error) throw error;
       return budgetId;
     },
-    onSuccess: async () => {
-      setIsRefreshing(true);
-      try {
-        await refetch();
-      } finally {
-        setIsRefreshing(false);
-      }
+    onSuccess: () => {
+      // Auto-refresh se encarrega da atualização
     },
-    onError: () => {
-      setIsRefreshing(false);
-    }
   });
 
   // Update status mutation
@@ -318,17 +309,8 @@ export function Orcamentos() {
       return data;
     },
     onSuccess: async (data) => {
-      setIsRefreshing(true);
-      try {
-        await refetch();
-      } finally {
-        setIsRefreshing(false);
-      }
       addLog('edit', 'orcamento', data.title, `Status alterado para: ${data.status}`);
     },
-    onError: () => {
-      setIsRefreshing(false);
-    }
   });
 
   const formatCurrency = (value) => {
@@ -407,7 +389,22 @@ export function Orcamentos() {
     <div className="p-6 bg-crm-dark min-h-screen">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-white">Orçamentos</h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400">Auto-atualização:</span>
+            <Button 
+              onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
+              variant={autoRefreshEnabled ? "default" : "outline"}
+              size="sm"
+              className={autoRefreshEnabled 
+                ? "bg-green-600 hover:bg-green-700 text-white" 
+                : "border-gray-600 text-gray-300 hover:bg-gray-700"
+              }
+            >
+              <RefreshCw className={`h-3 w-3 mr-1 ${autoRefreshEnabled ? 'animate-spin' : ''}`} />
+              {autoRefreshEnabled ? 'Ativada' : 'Desativada'}
+            </Button>
+          </div>
           <Button 
             onClick={handleRefresh}
             disabled={isRefreshing}
@@ -415,7 +412,7 @@ export function Orcamentos() {
             className="border-gray-600 text-gray-300 hover:bg-gray-700"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            {isRefreshing ? 'Atualizando...' : 'Atualizar'}
+            Atualizar Agora
           </Button>
           <Button 
             onClick={() => {
@@ -439,6 +436,16 @@ export function Orcamentos() {
             {createBudgetMutation.isLoading && 'Criando orçamento...'}
             {updateBudgetMutation.isLoading && 'Atualizando orçamento...'}
             {isRefreshing && !createBudgetMutation.isLoading && !updateBudgetMutation.isLoading && 'Atualizando lista...'}
+          </div>
+        </div>
+      )}
+
+      {/* Auto-refresh status */}
+      {autoRefreshEnabled && (
+        <div className="mb-4 p-2 bg-green-600/10 border border-green-600/20 rounded-lg">
+          <div className="text-green-400 text-xs flex items-center">
+            <RefreshCw className="h-3 w-3 mr-2 animate-spin" />
+            Auto-atualização ativa - Lista atualiza a cada 30 segundos
           </div>
         </div>
       )}
