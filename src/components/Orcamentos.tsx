@@ -23,7 +23,7 @@ export function Orcamentos() {
     const interval = setInterval(() => {
       console.log('Auto-refresh executado');
       refetch();
-    }, 10000); // 30 segundos
+    }, 30000); // 30 segundos
 
     return () => clearInterval(interval);
   }, [autoRefreshEnabled]);
@@ -126,7 +126,7 @@ export function Orcamentos() {
     }
   };
 
-  // Create budget mutation
+  // Create budget mutation - CORRIGIDO
   const createBudgetMutation = useMutation({
     mutationFn: async (budgetData) => {
       console.log('Criando novo orçamento:', budgetData);
@@ -199,10 +199,18 @@ export function Orcamentos() {
       return orcamento;
     },
     onSuccess: async (data) => {
-      console.log('Orçamento salvo com sucesso, lista será atualizada automaticamente...');
+      console.log('Orçamento criado com sucesso! Invalidando cache...');
+      
+      // AQUI ESTÁ A CORREÇÃO PRINCIPAL
+      // Invalida o cache para forçar uma nova busca imediatamente
+      await queryClient.invalidateQueries(['orcamentos']);
+      
       addLog('create', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
       setModalOpen(false);
       setEditingBudget(null);
+      
+      // Feedback visual de sucesso
+      console.log('Cache invalidado - lista será atualizada automaticamente');
     },
     onError: (error) => {
       console.error('Erro ao criar orçamento:', error);
@@ -210,7 +218,7 @@ export function Orcamentos() {
     }
   });
 
-  // Update budget mutation
+  // Update budget mutation - CORRIGIDO
   const updateBudgetMutation = useMutation({
     mutationFn: async (budgetData) => {
       const { items, id, ...orcamentoData } = budgetData;
@@ -270,6 +278,11 @@ export function Orcamentos() {
       return orcamento;
     },
     onSuccess: async (data) => {
+      console.log('Orçamento atualizado com sucesso! Invalidando cache...');
+      
+      // CORREÇÃO: Invalida o cache após atualização
+      await queryClient.invalidateQueries(['orcamentos']);
+      
       addLog('edit', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
       setModalOpen(false);
       setEditingBudget(null);
@@ -279,7 +292,7 @@ export function Orcamentos() {
     }
   });
 
-  // Delete budget mutation
+  // Delete budget mutation - CORRIGIDO
   const deleteBudgetMutation = useMutation({
     mutationFn: async (budgetId) => {
       const { error } = await supabase
@@ -290,12 +303,15 @@ export function Orcamentos() {
       if (error) throw error;
       return budgetId;
     },
-    onSuccess: () => {
-      // Auto-refresh se encarrega da atualização
+    onSuccess: async () => {
+      console.log('Orçamento deletado com sucesso! Invalidando cache...');
+      
+      // CORREÇÃO: Invalida o cache após deletar
+      await queryClient.invalidateQueries(['orcamentos']);
     },
   });
 
-  // Update status mutation
+  // Update status mutation - CORRIGIDO
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }) => {
       const { data, error } = await supabase
@@ -309,6 +325,11 @@ export function Orcamentos() {
       return data;
     },
     onSuccess: async (data) => {
+      console.log('Status atualizado com sucesso! Invalidando cache...');
+      
+      // CORREÇÃO: Invalida o cache após mudança de status
+      await queryClient.invalidateQueries(['orcamentos']);
+      
       addLog('edit', 'orcamento', data.title, `Status alterado para: ${data.status}`);
     },
   });
