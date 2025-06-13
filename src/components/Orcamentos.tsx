@@ -23,7 +23,7 @@ export function Orcamentos() {
     const interval = setInterval(() => {
       console.log('Auto-refresh executado');
       refetch();
-    }, 30000); // 30 segundos
+    }, 10000); // 30 segundos
 
     return () => clearInterval(interval);
   }, [autoRefreshEnabled]);
