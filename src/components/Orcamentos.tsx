@@ -14,6 +14,30 @@ export function Orcamentos() {
   const { addLog } = useLogs();
   const queryClient = useQueryClient();
 
+  // Função para converter data brasileira (dd/mm/yyyy) para formato ISO (yyyy-mm-dd)
+  const convertBrazilianDateToISO = (brazilianDate) => {
+    if (!brazilianDate) return new Date().toISOString().split('T')[0];
+    
+    // Se já está no formato ISO (yyyy-mm-dd), retorna como está
+    if (brazilianDate.includes('-') && brazilianDate.length === 10) {
+      return brazilianDate;
+    }
+    
+    // Se está no formato brasileiro (dd/mm/yyyy), converte
+    if (brazilianDate.includes('/')) {
+      const [day, month, year] = brazilianDate.split('/');
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    
+    return new Date().toISOString().split('T')[0];
+  };
+
+  // Função para formatar data ISO (yyyy-mm-dd) para formato brasileiro (dd/mm/yyyy)
+  const formatDateToBrazilian = (isoDate) => {
+    if (!isoDate) return '';
+    return isoDate.split('-').reverse().join('/');
+  };
+
   // Fetch budgets from Supabase
   const { data: budgets = [], isLoading } = useQuery({
     queryKey: ['orcamentos'],
@@ -82,7 +106,7 @@ export function Orcamentos() {
       const dataToInsert = {
         title: orcamentoData.title || `Orçamento #${Date.now()}`,
         client_name: orcamentoData.client,
-        date: orcamentoData.deliveryDate || new Date().toISOString().split('T')[0],
+        date: convertBrazilianDateToISO(orcamentoData.deliveryDate),
         total: totalValue,
         status: orcamentoData.status || 'Aguardando'
       };
@@ -153,7 +177,7 @@ export function Orcamentos() {
         .from('orcamentos')
         .update({
           client_name: orcamentoData.client,
-          date: orcamentoData.deliveryDate || new Date().toISOString().split('T')[0],
+          date: convertBrazilianDateToISO(orcamentoData.deliveryDate),
           total: totalValue,
           status: orcamentoData.status || 'Aguardando'
         })
@@ -283,7 +307,7 @@ export function Orcamentos() {
     // Transform the budget data to match the modal's expected format
     const transformedBudget = {
       ...budget,
-      deliveryDate: budget.date,
+      deliveryDate: formatDateToBrazilian(budget.date), // Converte para formato brasileiro
       items: budget.orcamento_items || []
     };
     setEditingBudget(transformedBudget);
@@ -364,7 +388,7 @@ export function Orcamentos() {
                     </Button>
                   </div>
                   <p className="text-gray-400">{budget.client_name}</p>
-                  <p className="text-gray-400 text-sm">{new Date(budget.date).toLocaleDateString('pt-BR')}</p>
+                  <p className="text-gray-400 text-sm">{formatDateToBrazilian(budget.date)}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-gray-400 text-sm">Total do Orçamento</p>
