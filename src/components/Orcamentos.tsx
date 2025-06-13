@@ -225,39 +225,32 @@ return fullBudget;
 
     },
     onSuccess: async (data) => {
-      console.log('Orçamento criado com sucesso! Invalidando cache...');
-      
-      // ✅ CORREÇÃO PRINCIPAL - Múltiplas estratégias para garantir atualização:
-      
-      // 1. Invalidar queries relacionadas
-      await queryClient.invalidateQueries({ 
-        queryKey: ['orcamentos'],
-        exact: true,
-        refetchType: 'active' // Força refetch imediato
-      });
-      
-      // 2. Refetch forçado como backup
-      await queryClient.refetchQueries({ 
-        queryKey: ['orcamentos'],
-        type: 'active'
-      });
-      
-      // 3. Resetar queries para garantir dados frescos
-      await queryClient.resetQueries({ 
-        queryKey: ['orcamentos'],
-        exact: true
-      });
-      
-      addLog('create', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
-      setModalOpen(false);
-      setEditingBudget(null);
-      
-      console.log('Cache invalidado e refetch forçado - lista será atualizada automaticamente');
-    },
-    onError: (error) => {
-      console.error('Erro ao criar orçamento:', error);
-      setIsRefreshing(false);
-    }
+  console.log('Orçamento criado com sucesso! Invalidando cache...');
+  
+  await queryClient.invalidateQueries({ 
+    queryKey: ['orcamentos'],
+    exact: true,
+    refetchType: 'active'
+  });
+
+  await queryClient.refetchQueries({ 
+    queryKey: ['orcamentos'],
+    type: 'active'
+  });
+
+  await queryClient.resetQueries({ 
+    queryKey: ['orcamentos'],
+    exact: true
+  });
+
+  // 🔧 Força a reatualização na hora
+  await refetch(); // <--- ADICIONE ESSA LINHA
+
+  addLog('create', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
+  setModalOpen(false);
+  setEditingBudget(null);
+}
+
   });
 
   // Update budget mutation - CORRIGIDO ✅
