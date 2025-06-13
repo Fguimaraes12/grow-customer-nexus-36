@@ -198,8 +198,31 @@ export function Orcamentos() {
         
         console.log('Itens criados com sucesso');
       }
+       
       
-      return orcamento;
+      // Buscar orçamento completo com os itens
+const { data: fullBudget, error: fetchError } = await supabase
+  .from('orcamentos')
+  .select(`
+    *,
+    orcamento_items (
+      id,
+      product_name,
+      price,
+      quantity,
+      subtotal
+    )
+  `)
+  .eq('id', orcamento.id)
+  .single();
+
+if (fetchError) {
+  console.error('Erro ao buscar orçamento completo:', fetchError);
+  throw fetchError;
+}
+
+return fullBudget;
+
     },
     onSuccess: async (data) => {
       console.log('Orçamento criado com sucesso! Invalidando cache...');
