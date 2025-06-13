@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,9 +14,45 @@ interface ProdutoModalProps {
 
 export function ProdutoModal({ open, onOpenChange, produto, onSave }: ProdutoModalProps) {
   const [formData, setFormData] = useState({
-    name: produto?.name || "",
-    price: produto?.price ? produto.price.replace('R$ ', '').replace('.', '').replace(',', '.') : "",
+    name: "",
+    price: "",
+    description: "",
+    category: "",
   });
+
+  useEffect(() => {
+    if (produto) {
+      setFormData({
+        name: produto.name || "",
+        price: produto.price ? formatPriceInput(produto.price) : "",
+        description: produto.description || "",
+        category: produto.category || "",
+      });
+    } else {
+      setFormData({
+        name: "",
+        price: "",
+        description: "",
+        category: "",
+      });
+    }
+  }, [produto, open]);
+
+  const formatPriceInput = (value: number | string) => {
+    if (typeof value === 'number') {
+      return value.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+    // If it's already a string, extract numeric value
+    const numericValue = parseFloat(value.toString().replace(/[^\d,]/g, '').replace(',', '.'));
+    if (isNaN(numericValue)) return '';
+    return numericValue.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
 
   const formatPrice = (value: string) => {
     // Remove tudo que não for número
@@ -41,13 +77,8 @@ export function ProdutoModal({ open, onOpenChange, produto, onSave }: ProdutoMod
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({
-      ...formData,
-      price: `R$ ${formData.price}`,
-      id: produto?.id || Date.now(),
-    });
-    onOpenChange(false);
-    setFormData({ name: "", price: "" });
+    console.log('Submitting product data:', formData);
+    onSave(formData);
   };
 
   return (
@@ -58,7 +89,7 @@ export function ProdutoModal({ open, onOpenChange, produto, onSave }: ProdutoMod
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="name">Nome do Produto</Label>
+            <Label htmlFor="name">Nome do Produto *</Label>
             <Input
               id="name"
               value={formData.name}
@@ -68,7 +99,7 @@ export function ProdutoModal({ open, onOpenChange, produto, onSave }: ProdutoMod
             />
           </div>
           <div>
-            <Label htmlFor="price">Preço</Label>
+            <Label htmlFor="price">Preço *</Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
                 R$
@@ -83,6 +114,24 @@ export function ProdutoModal({ open, onOpenChange, produto, onSave }: ProdutoMod
               />
             </div>
           </div>
+          <div>
+            <Label htmlFor="description">Descrição</Label>
+            <Input
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="bg-crm-dark border-crm-border text-white"
+            />
+          </div>
+          <div>
+            <Label htmlFor="category">Categoria</Label>
+            <Input
+              id="category"
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="bg-crm-dark border-crm-border text-white"
+            />
+          </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
@@ -93,6 +142,6 @@ export function ProdutoModal({ open, onOpenChange, produto, onSave }: ProdutoMod
           </div>
         </form>
       </DialogContent>
-    </Dialog>
+    </Modal>
   );
 }

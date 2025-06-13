@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -71,10 +70,29 @@ export function Orcamentos() {
     mutationFn: async (budgetData: any) => {
       const { items, ...orcamentoData } = budgetData;
       
+      // Calculate total from items
+      const totalValue = items.reduce((total: number, item: any) => {
+        const itemPrice = typeof item.price === 'string' 
+          ? parseFloat(item.price.replace(',', '.'))
+          : item.price;
+        return total + (item.quantity * itemPrice);
+      }, 0);
+
+      // Prepare orçamento data
+      const dataToInsert = {
+        title: orcamentoData.title || `Orçamento #${Date.now()}`,
+        client_name: orcamentoData.client,
+        date: orcamentoData.deliveryDate ? new Date(orcamentoData.deliveryDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        total: totalValue,
+        status: orcamentoData.status || 'Aguardando'
+      };
+
+      console.log('Inserting budget data:', dataToInsert);
+      
       // First create the budget
       const { data: orcamento, error: orcamentoError } = await supabase
         .from('orcamentos')
-        .insert([orcamentoData])
+        .insert([dataToInsert])
         .select()
         .single();
       
@@ -82,12 +100,21 @@ export function Orcamentos() {
       
       // Then create the items
       if (items && items.length > 0) {
-        const itemsData = items.map((item: any) => ({
-          orcamento_id: orcamento.id,
-          product_name: item.name,
-          price: parseFloat(item.price),
-          quantity: item.quantity
-        }));
+        const itemsData = items.map((item: any) => {
+          const itemPrice = typeof item.price === 'string' 
+            ? parseFloat(item.price.replace(',', '.'))
+            : item.price;
+          
+          return {
+            orcamento_id: orcamento.id,
+            product_name: item.name,
+            price: itemPrice,
+            quantity: item.quantity,
+            subtotal: item.quantity * itemPrice
+          };
+        });
+        
+        console.log('Inserting items data:', itemsData);
         
         const { error: itemsError } = await supabase
           .from('orcamento_items')
@@ -194,6 +221,7 @@ export function Orcamentos() {
 
   const handleSaveBudget = async (budgetData: any) => {
     try {
+      console.log('Saving budget:', budgetData);
       if (editingBudget) {
         await updateBudgetMutation.mutateAsync({ ...budgetData, id: editingBudget.id });
         setEditingBudget(null);

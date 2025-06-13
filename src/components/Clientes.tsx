@@ -46,9 +46,18 @@ export function Clientes() {
   // Create client mutation
   const createClientMutation = useMutation({
     mutationFn: async (clientData: any) => {
+      const dataToInsert = {
+        name: clientData.name,
+        phone: clientData.phone,
+        address: clientData.address,
+        email: clientData.email || null
+      };
+
+      console.log('Inserting client data:', dataToInsert);
+
       const { data, error } = await supabase
         .from('clientes')
-        .insert([clientData])
+        .insert([dataToInsert])
         .select()
         .single();
       
@@ -64,9 +73,18 @@ export function Clientes() {
   // Update client mutation
   const updateClientMutation = useMutation({
     mutationFn: async ({ id, ...clientData }: any) => {
+      const dataToUpdate = {
+        name: clientData.name,
+        phone: clientData.phone,
+        address: clientData.address,
+        email: clientData.email || null
+      };
+
+      console.log('Updating client data:', dataToUpdate);
+
       const { data, error } = await supabase
         .from('clientes')
-        .update(clientData)
+        .update(dataToUpdate)
         .eq('id', id)
         .select()
         .single();
@@ -124,6 +142,7 @@ export function Clientes() {
 
   const handleSaveClient = async (clientData: any) => {
     try {
+      console.log('Saving client:', clientData);
       if (editingClient) {
         await updateClientMutation.mutateAsync({ ...clientData, id: editingClient.id });
         setEditingClient(null);

@@ -33,9 +33,23 @@ export function Produtos() {
   // Create product mutation
   const createProductMutation = useMutation({
     mutationFn: async (productData: any) => {
+      // Convert price from formatted string to number
+      const priceValue = typeof productData.price === 'string' 
+        ? parseFloat(productData.price.replace('R$ ', '').replace('.', '').replace(',', '.'))
+        : productData.price;
+
+      const dataToInsert = {
+        name: productData.name,
+        price: priceValue,
+        description: productData.description || null,
+        category: productData.category || null
+      };
+
+      console.log('Inserting product data:', dataToInsert);
+
       const { data, error } = await supabase
         .from('produtos')
-        .insert([productData])
+        .insert([dataToInsert])
         .select()
         .single();
       
@@ -51,9 +65,23 @@ export function Produtos() {
   // Update product mutation
   const updateProductMutation = useMutation({
     mutationFn: async ({ id, ...productData }: any) => {
+      // Convert price from formatted string to number
+      const priceValue = typeof productData.price === 'string' 
+        ? parseFloat(productData.price.replace('R$ ', '').replace('.', '').replace(',', '.'))
+        : productData.price;
+
+      const dataToUpdate = {
+        name: productData.name,
+        price: priceValue,
+        description: productData.description || null,
+        category: productData.category || null
+      };
+
+      console.log('Updating product data:', dataToUpdate);
+
       const { data, error } = await supabase
         .from('produtos')
-        .update(productData)
+        .update(dataToUpdate)
         .eq('id', id)
         .select()
         .single();
@@ -97,6 +125,7 @@ export function Produtos() {
 
   const handleSaveProduct = async (productData: any) => {
     try {
+      console.log('Saving product:', productData);
       if (editingProduct) {
         await updateProductMutation.mutateAsync({ ...productData, id: editingProduct.id });
         setEditingProduct(null);

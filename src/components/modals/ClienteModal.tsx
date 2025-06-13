@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,21 +14,34 @@ interface ClienteModalProps {
 
 export function ClienteModal({ open, onOpenChange, cliente, onSave }: ClienteModalProps) {
   const [formData, setFormData] = useState({
-    name: cliente?.name || "",
-    phone: cliente?.phone || "",
-    address: cliente?.address || "",
+    name: "",
+    phone: "",
+    address: "",
+    email: "",
   });
+
+  useEffect(() => {
+    if (cliente) {
+      setFormData({
+        name: cliente.name || "",
+        phone: cliente.phone || "",
+        address: cliente.address || "",
+        email: cliente.email || "",
+      });
+    } else {
+      setFormData({
+        name: "",
+        phone: "",
+        address: "",
+        email: "",
+      });
+    }
+  }, [cliente, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({
-      ...formData,
-      id: cliente?.id || Date.now(),
-      totalSpent: cliente?.totalSpent || "R$ 0.00",
-      orders: cliente?.orders || 0,
-    });
-    onOpenChange(false);
-    setFormData({ name: "", phone: "", address: "" });
+    console.log('Submitting client data:', formData);
+    onSave(formData);
   };
 
   return (
@@ -39,7 +52,7 @@ export function ClienteModal({ open, onOpenChange, cliente, onSave }: ClienteMod
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="name">Nome</Label>
+            <Label htmlFor="name">Nome *</Label>
             <Input
               id="name"
               value={formData.name}
@@ -49,7 +62,7 @@ export function ClienteModal({ open, onOpenChange, cliente, onSave }: ClienteMod
             />
           </div>
           <div>
-            <Label htmlFor="phone">Telefone</Label>
+            <Label htmlFor="phone">Telefone *</Label>
             <Input
               id="phone"
               value={formData.phone}
@@ -59,13 +72,23 @@ export function ClienteModal({ open, onOpenChange, cliente, onSave }: ClienteMod
             />
           </div>
           <div>
-            <Label htmlFor="address">Endereço</Label>
+            <Label htmlFor="address">Endereço *</Label>
             <Input
               id="address"
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               className="bg-crm-dark border-crm-border text-white"
               required
+            />
+          </div>
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="bg-crm-dark border-crm-border text-white"
             />
           </div>
           <div className="flex justify-end gap-2">
