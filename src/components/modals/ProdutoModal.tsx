@@ -142,6 +142,6 @@ export function ProdutoModal({ open, onOpenChange, produto, onSave }: ProdutoMod
           </div>
         </form>
       </DialogContent>
-    </Modal>
+    </Dialog>
   );
 }
