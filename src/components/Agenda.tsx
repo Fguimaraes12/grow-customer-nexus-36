@@ -36,7 +36,7 @@ export function Agenda() {
 
   const getDeliveryStatus = (deliveryDate: string) => {
     const today = new Date();
-    const delivery = new Date(deliveryDate);
+    const delivery = new Date(deliveryDate + 'T00:00:00'); // Força horário local
     
     if (isSameDay(delivery, today)) {
       return { status: "hoje", color: "bg-yellow-600 text-white" };
@@ -48,7 +48,7 @@ export function Agenda() {
   };
 
   const formatDeliveryDate = (dateString: string) => {
-    const date = new Date(dateString);
+    const date = new Date(dateString + 'T00:00:00'); // Força horário local
     return format(date, "dd/MM/yyyy", { locale: ptBR });
   };
 
@@ -66,11 +66,11 @@ export function Agenda() {
   };
 
   const getTotalQuantity = (items: any[]) => {
-    return items?.reduce((total, item) => total + item.quantity, 0) || 0;
+    return items?.reduce((total, item) => total + (item.quantity || 0), 0) || 0;
   };
 
   const formatCurrency = (value: number | string) => {
-    const numericValue = typeof value === 'number' ? value : parseFloat(value.toString());
+    const numericValue = typeof value === 'number' ? value : parseFloat(value?.toString() || '0');
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
@@ -143,7 +143,7 @@ export function Agenda() {
                     <div className="space-y-1">
                       {budget.orcamento_items?.slice(0, 3).map((item, index) => (
                         <div key={index} className="text-sm text-gray-300 flex justify-between">
-                          <span>{item.quantity}x {item.product_name}</span>
+                          <span>{item.quantity || 0}x {item.product_name || 'Produto sem nome'}</span>
                           <span className="text-gray-400">
                             {formatCurrency(item.subtotal || 0)}
                           </span>

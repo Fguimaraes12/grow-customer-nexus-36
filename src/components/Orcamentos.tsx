@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -127,10 +126,9 @@ export function Orcamentos() {
       return orcamento;
     },
     onSuccess: (data) => {
-      // Invalidate and refetch budgets to ensure the list updates immediately
-      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
-      // Also invalidate dashboard queries to update stats
-      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
+      // Força uma nova consulta para garantir que a lista seja atualizada
+      queryClient.refetchQueries({ queryKey: ['orcamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['orcamentos-agenda'] });
       addLog('create', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
       setModalOpen(false);
       setEditingBudget(null);
@@ -197,7 +195,8 @@ export function Orcamentos() {
       return orcamento;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
+      queryClient.refetchQueries({ queryKey: ['orcamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['orcamentos-agenda'] });
       addLog('edit', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
       setModalOpen(false);
       setEditingBudget(null);

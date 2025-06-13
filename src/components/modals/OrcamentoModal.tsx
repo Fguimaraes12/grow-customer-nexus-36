@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
       setSelectedClient(budget.client);
       // Se tem data de entrega salva, formata para DD/MM/AAAA
       if (budget.deliveryDate) {
-        const date = new Date(budget.deliveryDate);
+        const date = new Date(budget.deliveryDate + 'T00:00:00'); // Força horário local
         const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
         setDeliveryDate(formattedDate);
       } else {
@@ -121,10 +120,8 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
       }
     }
     
-    // Cria a data correta usando o construtor Date com ano, mês (0-based), dia
-    // Para evitar problemas de fuso horário, vamos criar a data em UTC
-    const isoDate = new Date(Date.UTC(parseInt(fullYear), parseInt(month) - 1, parseInt(day)));
-    return isoDate.toISOString().split('T')[0]; // Retorna apenas a parte da data (YYYY-MM-DD)
+    // Cria a data em formato YYYY-MM-DD para evitar problemas de fuso horário
+    return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   };
 
   const addItem = () => {
