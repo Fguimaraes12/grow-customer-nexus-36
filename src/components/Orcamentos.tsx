@@ -55,7 +55,7 @@ export function Orcamentos() {
     return isoDate.split('-').reverse().join('/');
   };
 
-  // Query para buscar orçamentos
+  // Query para buscar orçamentos - CORRIGIDO ✅
   const { data: budgets = [], isLoading, refetch } = useQuery({
     queryKey: ['orcamentos'],
     queryFn: async () => {
@@ -82,10 +82,13 @@ export function Orcamentos() {
       console.log('Orçamentos carregados:', data);
       return data;
     },
-    staleTime: 0, // Sempre busca dados frescos
-    cacheTime: 300000, // Mantém no cache por 5 minutos
-    refetchOnWindowFocus: true, // Refetch quando a janela recebe foco
-    refetchInterval: false, // Auto-refresh desabilitado
+    // ✅ CORREÇÕES PRINCIPAIS:
+    staleTime: 0, // Dados sempre considerados desatualizados
+    gcTime: 300000, // Substitui cacheTime (nova API)
+    refetchOnWindowFocus: true,
+    refetchOnMount: true, // Sempre refetch ao montar
+    refetchOnReconnect: true, // Refetch ao reconectar
+    retry: 3, // Retry em caso de erro
   });
 
   // Fetch clients for the modal
@@ -198,18 +201,35 @@ export function Orcamentos() {
       
       return orcamento;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('Orçamento criado com sucesso! Invalidando cache...');
       
-      // ✅ CORREÇÃO APLICADA: Nova sintaxe do React Query
-      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
+      // ✅ CORREÇÃO PRINCIPAL - Múltiplas estratégias para garantir atualização:
+      
+      // 1. Invalidar queries relacionadas
+      await queryClient.invalidateQueries({ 
+        queryKey: ['orcamentos'],
+        exact: true,
+        refetchType: 'active' // Força refetch imediato
+      });
+      
+      // 2. Refetch forçado como backup
+      await queryClient.refetchQueries({ 
+        queryKey: ['orcamentos'],
+        type: 'active'
+      });
+      
+      // 3. Resetar queries para garantir dados frescos
+      await queryClient.resetQueries({ 
+        queryKey: ['orcamentos'],
+        exact: true
+      });
       
       addLog('create', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
       setModalOpen(false);
       setEditingBudget(null);
       
-      // Feedback visual de sucesso
-      console.log('Cache invalidado - lista será atualizada automaticamente');
+      console.log('Cache invalidado e refetch forçado - lista será atualizada automaticamente');
     },
     onError: (error) => {
       console.error('Erro ao criar orçamento:', error);
@@ -276,11 +296,20 @@ export function Orcamentos() {
       
       return orcamento;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('Orçamento atualizado com sucesso! Invalidando cache...');
       
-      // ✅ CORREÇÃO APLICADA: Nova sintaxe do React Query
-      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
+      // ✅ Mesma estratégia para atualização
+      await queryClient.invalidateQueries({ 
+        queryKey: ['orcamentos'],
+        exact: true,
+        refetchType: 'active'
+      });
+      
+      await queryClient.refetchQueries({ 
+        queryKey: ['orcamentos'],
+        type: 'active'
+      });
       
       addLog('edit', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
       setModalOpen(false);
@@ -302,11 +331,20 @@ export function Orcamentos() {
       if (error) throw error;
       return budgetId;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       console.log('Orçamento deletado com sucesso! Invalidando cache...');
       
-      // ✅ CORREÇÃO APLICADA: Nova sintaxe do React Query
-      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
+      // ✅ Mesma estratégia para deleção
+      await queryClient.invalidateQueries({ 
+        queryKey: ['orcamentos'],
+        exact: true,
+        refetchType: 'active'
+      });
+      
+      await queryClient.refetchQueries({ 
+        queryKey: ['orcamentos'],
+        type: 'active'
+      });
     },
   });
 
@@ -323,11 +361,15 @@ export function Orcamentos() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('Status atualizado com sucesso! Invalidando cache...');
       
-      // ✅ CORREÇÃO APLICADA: Nova sintaxe do React Query
-      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
+      // ✅ Mesma estratégia para status
+      await queryClient.invalidateQueries({ 
+        queryKey: ['orcamentos'],
+        exact: true,
+        refetchType: 'active'
+      });
       
       addLog('edit', 'orcamento', data.title, `Status alterado para: ${data.status}`);
     },
