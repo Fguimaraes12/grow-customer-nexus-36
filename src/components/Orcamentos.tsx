@@ -41,10 +41,11 @@ export function Orcamentos() {
     return isoDate.split('-').reverse().join('/');
   };
 
-  // Fetch budgets from Supabase
-  const { data: budgets = [], isLoading } = useQuery({
+  // SOLUÇÃO 1: Query mais simples, sem configurações que podem causar conflito
+  const { data: budgets = [], isLoading, refetch } = useQuery({
     queryKey: ['orcamentos'],
     queryFn: async () => {
+      console.log('Executando query de orçamentos...');
       const { data, error } = await supabase
         .from('orcamentos')
         .select(`
@@ -59,13 +60,14 @@ export function Orcamentos() {
         `)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao buscar orçamentos:', error);
+        throw error;
+      }
+      
+      console.log('Orçamentos carregados:', data);
       return data;
-    },
-    staleTime: 0, // Dados sempre considerados stale
-    cacheTime: 1000 * 60 * 5, // Cache por 5 minutos
-    refetchOnMount: true,
-    refetchOnWindowFocus: true
+    }
   });
 
   // Fetch clients for the modal
@@ -96,9 +98,11 @@ export function Orcamentos() {
     }
   });
 
-  // Create budget mutation
+  // SOLUÇÃO 2: Mutation mais simples com refetch direto
   const createBudgetMutation = useMutation({
     mutationFn: async (budgetData: any) => {
+      console.log('Criando novo orçamento:', budgetData);
+      
       const { items, ...orcamentoData } = budgetData;
       
       // Calculate total from items
@@ -118,7 +122,7 @@ export function Orcamentos() {
         status: orcamentoData.status || 'Aguardando'
       };
 
-      console.log('Inserting budget data:', dataToInsert);
+      console.log('Dados a inserir:', dataToInsert);
       
       // First create the budget
       const { data: orcamento, error: orcamentoError } = await supabase
@@ -127,7 +131,12 @@ export function Orcamentos() {
         .select()
         .single();
       
-      if (orcamentoError) throw orcamentoError;
+      if (orcamentoError) {
+        console.error('Erro ao criar orçamento:', orcamentoError);
+        throw orcamentoError;
+      }
+      
+      console.log('Orçamento criado:', orcamento);
       
       // Then create the items
       if (items && items.length > 0) {
@@ -145,34 +154,36 @@ export function Orcamentos() {
           };
         });
         
-        console.log('Inserting items data:', itemsData);
+        console.log('Itens a inserir:', itemsData);
         
         const { error: itemsError } = await supabase
           .from('orcamento_items')
           .insert(itemsData);
         
-        if (itemsError) throw itemsError;
+        if (itemsError) {
+          console.error('Erro ao criar itens:', itemsError);
+          throw itemsError;
+        }
+        
+        console.log('Itens criados com sucesso');
       }
       
       return orcamento;
     },
-    onSuccess: async (data) => {
-      // Primeiro, invalida as queries
-      await queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
-      await queryClient.invalidateQueries({ queryKey: ['orcamentos-agenda'] });
+    onSuccess: (data) => {
+      console.log('Orçamento salvo com sucesso, atualizando lista...');
       
-      // Depois força o refetch
-      await queryClient.refetchQueries({ queryKey: ['orcamentos'] });
+      // SOLUÇÃO 3: Usar apenas refetch, mais direto e confiável
+      refetch().then(() => {
+        console.log('Lista atualizada com sucesso');
+      });
       
-      // Log da operação
       addLog('create', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
-      
-      // Limpa os estados
       setModalOpen(false);
       setEditingBudget(null);
     },
     onError: (error) => {
-      console.error('Error creating budget:', error);
+      console.error('Erro ao criar orçamento:', error);
     }
   });
 
@@ -235,17 +246,11 @@ export function Orcamentos() {
       
       return orcamento;
     },
-    onSuccess: async (data) => {
-      await queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
-      await queryClient.invalidateQueries({ queryKey: ['orcamentos-agenda'] });
-      await queryClient.refetchQueries({ queryKey: ['orcamentos'] });
-      
+    onSuccess: (data) => {
+      refetch();
       addLog('edit', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
       setModalOpen(false);
       setEditingBudget(null);
-    },
-    onError: (error) => {
-      console.error('Error updating budget:', error);
     }
   });
 
@@ -260,12 +265,8 @@ export function Orcamentos() {
       if (error) throw error;
       return budgetId;
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
-      await queryClient.refetchQueries({ queryKey: ['orcamentos'] });
-    },
-    onError: (error) => {
-      console.error('Error deleting budget:', error);
+    onSuccess: () => {
+      refetch();
     }
   });
 
@@ -282,13 +283,9 @@ export function Orcamentos() {
       if (error) throw error;
       return data;
     },
-    onSuccess: async (data) => {
-      await queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
-      await queryClient.refetchQueries({ queryKey: ['orcamentos'] });
+    onSuccess: (data) => {
+      refetch();
       addLog('edit', 'orcamento', data.title, `Status alterado para: ${data.status}`);
-    },
-    onError: (error) => {
-      console.error('Error updating status:', error);
     }
   });
 
@@ -302,7 +299,7 @@ export function Orcamentos() {
 
   const handleSaveBudget = async (budgetData: any) => {
     try {
-      console.log('Saving budget:', budgetData);
+      console.log('Salvando orçamento:', budgetData);
       
       if (editingBudget) {
         await updateBudgetMutation.mutateAsync({ ...budgetData, id: editingBudget.id });
@@ -310,7 +307,7 @@ export function Orcamentos() {
         await createBudgetMutation.mutateAsync(budgetData);
       }
     } catch (error) {
-      console.error('Error saving budget:', error);
+      console.error('Erro ao salvar orçamento:', error);
     }
   };
 
@@ -378,6 +375,11 @@ export function Orcamentos() {
           <Plus className="h-4 w-4 mr-2" />
           Novo Orçamento
         </Button>
+      </div>
+
+      {/* Debug: Mostrar quantos orçamentos temos */}
+      <div className="mb-4 text-white text-sm">
+        Total de orçamentos: {budgets.length}
       </div>
 
       {/* Budgets */}
