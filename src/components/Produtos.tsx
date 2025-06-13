@@ -1,9 +1,8 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, Edit, Trash2, FileText } from "lucide-react";
+import { Search, Plus, Edit, Trash2, FileText, Tag } from "lucide-react";
 import { ProdutoModal } from "./modals/ProdutoModal";
 import { useLogs } from "@/contexts/LogsContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -199,8 +198,8 @@ export function Produtos() {
                   <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
                     <FileText className="h-6 w-6 text-white" />
                   </div>
-                  <div>
-                    <h3 className="text-white font-semibold">{product.name}</h3>
+                  <div className="flex-1">
+                    <h3 className="text-white font-semibold mb-1">{product.name}</h3>
                     <p className="text-green-400 font-bold text-lg">{formatCurrency(product.price)}</p>
                   </div>
                 </div>
@@ -222,6 +221,23 @@ export function Produtos() {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
+              </div>
+
+              {/* Description and Category */}
+              <div className="space-y-2">
+                {product.description && (
+                  <div>
+                    <p className="text-gray-400 text-sm">Descrição:</p>
+                    <p className="text-gray-300 text-sm">{product.description}</p>
+                  </div>
+                )}
+                
+                {product.category && (
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-300 text-sm">{product.category}</span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

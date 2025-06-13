@@ -1,6 +1,9 @@
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, DollarSign, TrendingUp, Calendar } from "lucide-react";
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 export function Dashboard() {
   const [dashboardData, setDashboardData] = useState({
@@ -12,6 +15,46 @@ export function Dashboard() {
     atividadesRecentes: []
   });
 
+  // Fetch data from Supabase
+  const { data: clientes = [] } = useQuery({
+    queryKey: ['clientes'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(2);
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  const { data: orcamentos = [] } = useQuery({
+    queryKey: ['orcamentos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('orcamentos')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  const { data: despesas = [] } = useQuery({
+    queryKey: ['despesas'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('despesas')
+        .select('*');
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -19,59 +62,34 @@ export function Dashboard() {
     }).format(value);
   };
 
-  const parseValue = (valueString: string) => {
-    // Remove tudo exceto números, vírgulas e pontos
-    let cleanValue = valueString.replace(/[^\d,.]/g, '');
-    
-    // Se contém vírgula, assumimos formato brasileiro (ex: 1.500,00)
-    if (cleanValue.includes(',')) {
-      // Remove pontos (separadores de milhares) e substitui vírgula por ponto
-      cleanValue = cleanValue.replace(/\./g, '').replace(',', '.');
-    }
-    
-    const numberValue = parseFloat(cleanValue);
-    return isNaN(numberValue) ? 0 : numberValue;
-  };
-
   const calculateDashboardData = () => {
-    // Buscar dados do localStorage
-    const savedClients = localStorage.getItem('clientes');
-    const savedBudgets = localStorage.getItem('orcamentos');
-    const savedExpenses = localStorage.getItem('despesas') || '[]';
-
-    const clients = savedClients ? JSON.parse(savedClients) : [];
-    const budgets = savedBudgets ? JSON.parse(savedBudgets) : [];
-    const expenses = JSON.parse(savedExpenses);
-
     // Calcular total de clientes
-    const totalClientes = clients.length;
+    const totalClientes = clientes.length;
 
     // Calcular receitas do mês APENAS dos orçamentos FINALIZADOS
-    const receitasTotal = budgets
+    const receitasTotal = orcamentos
       .filter(budget => budget.status === 'Finalizado')
       .reduce((total, budget) => {
-        const value = parseValue(budget.total);
-        return total + value;
+        return total + parseFloat(budget.total || 0);
       }, 0);
 
     // Calcular despesas do mês
-    const despesasTotal = expenses.reduce((total, expense) => {
-      const value = parseValue(expense.value);
-      return total + value;
+    const despesasTotal = despesas.reduce((total, expense) => {
+      return total + parseFloat(expense.value || 0);
     }, 0);
 
-    // Contar orçamentos pendentes (status "Rascunho")
-    const orcamentosPendentes = budgets.filter(budget => budget.status === 'Rascunho').length;
+    // Contar orçamentos pendentes (status "Aguardando")
+    const orcamentosPendentes = orcamentos.filter(budget => budget.status === 'Aguardando').length;
 
     // Pegar os 2 clientes mais recentes
-    const clientesRecentes = clients.slice(-2).reverse();
+    const clientesRecentes = clientes.slice(0, 2);
 
     // Criar atividades recentes baseadas nos orçamentos
-    const atividadesRecentes = budgets.slice(-2).reverse().map(budget => ({
+    const atividadesRecentes = orcamentos.slice(0, 2).map(budget => ({
       title: budget.title || 'Orçamento',
-      client: budget.client,
-      value: budget.total,
-      date: budget.date
+      client: budget.client_name,
+      value: formatCurrency(parseFloat(budget.total || 0)),
+      date: new Date(budget.date).toLocaleDateString('pt-BR')
     }));
 
     setDashboardData({
@@ -86,20 +104,7 @@ export function Dashboard() {
 
   useEffect(() => {
     calculateDashboardData();
-
-    // Escutar mudanças nos dados
-    const handleDataChange = () => {
-      calculateDashboardData();
-    };
-
-    window.addEventListener('storage', handleDataChange);
-    window.addEventListener('budgetCreated', handleDataChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleDataChange);
-      window.removeEventListener('budgetCreated', handleDataChange);
-    };
-  }, []);
+  }, [clientes, orcamentos, despesas]);
 
   const stats = [
     {

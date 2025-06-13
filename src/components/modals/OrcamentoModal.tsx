@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -52,9 +51,14 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
     }).format(value);
   };
 
-  const parsePrice = (priceString: string) => {
-    // Remove tudo exceto números, vírgulas e pontos
-    let cleanValue = priceString.replace(/[^\d,.]/g, '');
+  const parsePrice = (priceString: string | number) => {
+    // Se for número, retorna diretamente
+    if (typeof priceString === 'number') {
+      return priceString;
+    }
+    
+    // Se for string, processa
+    let cleanValue = priceString.toString().replace(/[^\d,.]/g, '');
     
     // Se contém vírgula, assumimos formato brasileiro (ex: 1.500,00)
     if (cleanValue.includes(',')) {
@@ -265,7 +269,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
                       <SelectContent className="bg-crm-dark border-crm-border">
                         {produtos.map((produto) => (
                           <SelectItem key={produto.id} value={produto.name} className="text-white">
-                            {produto.name} - {produto.price}
+                            {produto.name} - {formatCurrency(produto.price)}
                           </SelectItem>
                         ))}
                       </SelectContent>
