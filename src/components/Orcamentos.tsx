@@ -126,7 +126,7 @@ export function Orcamentos() {
     }
   };
 
-  // Create budget mutation - CORRIGIDO
+  // Create budget mutation - CORRIGIDO ✅
   const createBudgetMutation = useMutation({
     mutationFn: async (budgetData) => {
       console.log('Criando novo orçamento:', budgetData);
@@ -198,12 +198,11 @@ export function Orcamentos() {
       
       return orcamento;
     },
-    onSuccess: async (data) => {
+    onSuccess: (data) => {
       console.log('Orçamento criado com sucesso! Invalidando cache...');
       
-      // AQUI ESTÁ A CORREÇÃO PRINCIPAL
-      // Invalida o cache para forçar uma nova busca imediatamente
-      await queryClient.invalidateQueries(['orcamentos']);
+      // ✅ CORREÇÃO APLICADA: Nova sintaxe do React Query
+      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
       
       addLog('create', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
       setModalOpen(false);
@@ -218,7 +217,7 @@ export function Orcamentos() {
     }
   });
 
-  // Update budget mutation - CORRIGIDO
+  // Update budget mutation - CORRIGIDO ✅
   const updateBudgetMutation = useMutation({
     mutationFn: async (budgetData) => {
       const { items, id, ...orcamentoData } = budgetData;
@@ -277,11 +276,11 @@ export function Orcamentos() {
       
       return orcamento;
     },
-    onSuccess: async (data) => {
+    onSuccess: (data) => {
       console.log('Orçamento atualizado com sucesso! Invalidando cache...');
       
-      // CORREÇÃO: Invalida o cache após atualização
-      await queryClient.invalidateQueries(['orcamentos']);
+      // ✅ CORREÇÃO APLICADA: Nova sintaxe do React Query
+      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
       
       addLog('edit', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
       setModalOpen(false);
@@ -292,7 +291,7 @@ export function Orcamentos() {
     }
   });
 
-  // Delete budget mutation - CORRIGIDO
+  // Delete budget mutation - CORRIGIDO ✅
   const deleteBudgetMutation = useMutation({
     mutationFn: async (budgetId) => {
       const { error } = await supabase
@@ -303,15 +302,15 @@ export function Orcamentos() {
       if (error) throw error;
       return budgetId;
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       console.log('Orçamento deletado com sucesso! Invalidando cache...');
       
-      // CORREÇÃO: Invalida o cache após deletar
-      await queryClient.invalidateQueries(['orcamentos']);
+      // ✅ CORREÇÃO APLICADA: Nova sintaxe do React Query
+      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
     },
   });
 
-  // Update status mutation - CORRIGIDO
+  // Update status mutation - CORRIGIDO ✅
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }) => {
       const { data, error } = await supabase
@@ -324,11 +323,11 @@ export function Orcamentos() {
       if (error) throw error;
       return data;
     },
-    onSuccess: async (data) => {
+    onSuccess: (data) => {
       console.log('Status atualizado com sucesso! Invalidando cache...');
       
-      // CORREÇÃO: Invalida o cache após mudança de status
-      await queryClient.invalidateQueries(['orcamentos']);
+      // ✅ CORREÇÃO APLICADA: Nova sintaxe do React Query
+      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
       
       addLog('edit', 'orcamento', data.title, `Status alterado para: ${data.status}`);
     },
