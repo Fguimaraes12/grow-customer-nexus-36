@@ -363,6 +363,11 @@ export function Orcamentos() {
     },
     onSuccess: async (data) => {
       console.log('Status atualizado com sucesso! Invalidando cache...');
+
+     queryClient.setQueryData(['orcamentos'], (oldData) => {
+  if (!oldData) return [data];
+  return [data, ...oldData]; // adiciona no topo da lista
+});
       
       // ✅ Mesma estratégia para status
       await queryClient.invalidateQueries({ 
