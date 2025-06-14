@@ -26,8 +26,8 @@ export function Agenda() {
           )
         `)
         .eq('status', 'Aguardando')
-        .not('date', 'is', null)
-        .order('date', { ascending: true });
+        .not('delivery_date', 'is', null)
+        .order('delivery_date', { ascending: true });
       
       if (error) throw error;
       return data;
@@ -105,7 +105,7 @@ export function Agenda() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {budgets.map((budget) => {
-            const deliveryStatus = getDeliveryStatus(budget.date);
+            const deliveryStatus = getDeliveryStatus(budget.delivery_date);
             
             return (
               <Card key={budget.id} className="bg-crm-card border-crm-border hover:bg-crm-card/80 transition-colors">
@@ -125,7 +125,7 @@ export function Agenda() {
                   
                   <div className="flex items-center gap-2 text-gray-300">
                     <Clock className="h-4 w-4" />
-                    <span>Entrega: {formatDeliveryDate(budget.date)}</span>
+                    <span>Entrega: {formatDeliveryDate(budget.delivery_date)}</span>
                   </div>
                   
                   <div className="flex items-center gap-2 text-gray-300">
