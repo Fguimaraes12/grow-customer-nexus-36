@@ -1,95 +1,451 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Edit } from "lucide-react";
+import { Plus, Trash2, Edit, RefreshCw } from "lucide-react";
 import { OrcamentoModal } from "./modals/OrcamentoModal";
 import { useLogs } from "@/contexts/LogsContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export function Orcamentos() {
-  const [budgets, setBudgets] = useState(() => {
-    const savedBudgets = localStorage.getItem('orcamentos');
-    return savedBudgets ? JSON.parse(savedBudgets) : [];
-  });
-
-  const [produtos] = useState(() => {
-    const savedProducts = localStorage.getItem('produtos');
-    return savedProducts ? JSON.parse(savedProducts) : [
-      { id: 1, name: "Banner 2x1m", price: "R$ 80,00" },
-      { id: 2, name: "Adesivo Vinil", price: "R$ 25,00" },
-      { id: 3, name: "Placa ACM", price: "R$ 150,00" },
-    ];
-  });
-
-  const [clientes] = useState(() => {
-    const savedClients = localStorage.getItem('clientes');
-    return savedClients ? JSON.parse(savedClients) : [
-      { id: 1, name: "João Silva" },
-      { id: 2, name: "Maria Santos" },
-    ];
-  });
-
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
   const { addLog } = useLogs();
+  const queryClient = useQueryClient();
 
+  // Auto-refresh a cada 30 segundos quando habilitado
   useEffect(() => {
-    localStorage.setItem('orcamentos', JSON.stringify(budgets));
-  }, [budgets]);
+    if (!autoRefreshEnabled) return;
+
+    const interval = setInterval(() => {
+      console.log('Auto-refresh executado');
+      refetch();
+    }, 30000); // 30 segundos
+
+    return () => clearInterval(interval);
+  }, [autoRefreshEnabled]);
+
+  // Função para converter data brasileira (dd/mm/yyyy) para formato ISO (yyyy-mm-dd)
+  const convertBrazilianDateToISO = (brazilianDate) => {
+    if (!brazilianDate) return new Date().toISOString().split('T')[0];
+    
+    // Se já está no formato ISO (yyyy-mm-dd), retorna como está
+    if (brazilianDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return brazilianDate;
+    }
+    
+    // Se está no formato brasileiro (dd/mm/yyyy), converte
+    if (brazilianDate.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+      const [day, month, year] = brazilianDate.split('/');
+      const formattedDay = day.padStart(2, '0');
+      const formattedMonth = month.padStart(2, '0');
+      return `${year}-${formattedMonth}-${formattedDay}`;
+    }
+    
+    // Fallback para data atual
+    return new Date().toISOString().split('T')[0];
+  };
+
+  // Função para formatar data ISO (yyyy-mm-dd) para formato brasileiro (dd/mm/yyyy)
+  const formatDateToBrazilian = (isoDate) => {
+    if (!isoDate) return '';
+    return isoDate.split('-').reverse().join('/');
+  };
+
+  // Query para buscar orçamentos - CORRIGIDO ✅
+  const { data: budgets = [], isLoading, refetch } = useQuery({
+    queryKey: ['orcamentos'],
+    queryFn: async () => {
+      console.log('Executando query de orçamentos...');
+      const { data, error } = await supabase
+        .from('orcamentos')
+        .select(`
+          *,
+          orcamento_items (
+            id,
+            product_name,
+            price,
+            quantity,
+            subtotal
+          )
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Erro ao buscar orçamentos:', error);
+        throw error;
+      }
+      
+      console.log('Orçamentos carregados:', data);
+      return data;
+    },
+    // ✅ CORREÇÕES PRINCIPAIS:
+    staleTime: 0, // Dados sempre considerados desatualizados
+    gcTime: 300000, // Substitui cacheTime (nova API)
+    refetchOnWindowFocus: true,
+    refetchOnMount: true, // Sempre refetch ao montar
+    refetchOnReconnect: true, // Refetch ao reconectar
+    retry: 3, // Retry em caso de erro
+  });
+
+  // Fetch clients for the modal
+  const { data: clientes = [] } = useQuery({
+    queryKey: ['clientes'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('id, name')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Fetch products for the modal
+  const { data: produtos = [] } = useQuery({
+    queryKey: ['produtos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('produtos')
+        .select('id, name, price')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Função para refetch com loading state
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Create budget mutation - CORRIGIDO ✅
+  const createBudgetMutation = useMutation({
+    mutationFn: async (budgetData) => {
+      console.log('Criando novo orçamento:', budgetData);
+      
+      const { items, ...orcamentoData } = budgetData;
+      
+      // Calculate total from items
+      const totalValue = items.reduce((total, item) => {
+        const itemPrice = typeof item.price === 'string' 
+          ? parseFloat(item.price.replace(',', '.'))
+          : item.price;
+        return total + (item.quantity * itemPrice);
+      }, 0);
+
+      // Prepare orçamento data
+      const dataToInsert = {
+        title: orcamentoData.title || `Orçamento #${Date.now()}`,
+        client_name: orcamentoData.client,
+        date: convertBrazilianDateToISO(orcamentoData.deliveryDate),
+        total: totalValue,
+        status: orcamentoData.status || 'Aguardando'
+      };
+
+      console.log('Dados a inserir:', dataToInsert);
+      
+      // First create the budget
+      const { data: orcamento, error: orcamentoError } = await supabase
+        .from('orcamentos')
+        .insert([dataToInsert])
+        .select()
+        .single();
+      
+      if (orcamentoError) {
+        console.error('Erro ao criar orçamento:', orcamentoError);
+        throw orcamentoError;
+      }
+      
+      console.log('Orçamento criado:', orcamento);
+      
+      // Then create the items
+      if (items && items.length > 0) {
+        const itemsData = items.map((item) => {
+          const itemPrice = typeof item.price === 'string' 
+            ? parseFloat(item.price.replace(',', '.'))
+            : item.price;
+          
+          return {
+            orcamento_id: orcamento.id,
+            product_name: item.product_name ?? item.name ?? item.product, // fallback para garantir
+            price: itemPrice,
+            quantity: item.quantity,
+            subtotal: item.quantity * itemPrice
+          };
+        });
+        
+        console.log('Itens a inserir:', itemsData);
+        
+        const { error: itemsError } = await supabase
+          .from('orcamento_items')
+          .insert(itemsData);
+        
+        if (itemsError) {
+          console.error('Erro ao criar itens:', itemsError);
+          throw itemsError;
+        }
+        
+        console.log('Itens criados com sucesso');
+      }
+       
+      
+      // Buscar orçamento completo com os itens
+const { data: fullBudget, error: fetchError } = await supabase
+  .from('orcamentos')
+  .select(`
+    *,
+    orcamento_items (
+      id,
+      product_name,
+      price,
+      quantity,
+      subtotal
+    )
+  `)
+  .eq('id', orcamento.id)
+  .single();
+
+if (fetchError) {
+  console.error('Erro ao buscar orçamento completo:', fetchError);
+  throw fetchError;
+}
+
+return fullBudget;
+
+    },
+    onSuccess: async (data) => {
+  console.log('Orçamento criado com sucesso! Invalidando cache...');
+  
+  await queryClient.invalidateQueries({ 
+    queryKey: ['orcamentos'],
+    exact: true,
+    refetchType: 'active'
+  });
+
+  await queryClient.refetchQueries({ 
+    queryKey: ['orcamentos'],
+    type: 'active'
+  });
+
+  await queryClient.resetQueries({ 
+    queryKey: ['orcamentos'],
+    exact: true
+  });
+
+  // 🔧 Força a reatualização na hora
+  await refetch(); // <--- ADICIONE ESSA LINHA
+
+  addLog('create', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
+  setModalOpen(false);
+  setEditingBudget(null);
+}
+
+  });
+
+  // Update budget mutation - CORRIGIDO ✅
+  const updateBudgetMutation = useMutation({
+    mutationFn: async (budgetData) => {
+      const { items, id, ...orcamentoData } = budgetData;
+      
+      // Calculate total from items
+      const totalValue = items.reduce((total, item) => {
+        const itemPrice = typeof item.price === 'string' 
+          ? parseFloat(item.price.replace(',', '.'))
+          : item.price;
+        return total + (item.quantity * itemPrice);
+      }, 0);
+
+      // Update the budget
+      const { data: orcamento, error: orcamentoError } = await supabase
+        .from('orcamentos')
+        .update({
+          client_name: orcamentoData.client,
+          date: convertBrazilianDateToISO(orcamentoData.deliveryDate),
+          total: totalValue,
+          status: orcamentoData.status || 'Aguardando'
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (orcamentoError) throw orcamentoError;
+      
+      // Delete existing items
+      await supabase
+        .from('orcamento_items')
+        .delete()
+        .eq('orcamento_id', id);
+      
+      // Insert new items
+      if (items && items.length > 0) {
+        const itemsData = items.map((item) => {
+          const itemPrice = typeof item.price === 'string' 
+            ? parseFloat(item.price.replace(',', '.'))
+            : item.price;
+          
+          return {
+            orcamento_id: id,
+            product_name: item.name,
+            price: itemPrice,
+            quantity: item.quantity,
+            subtotal: item.quantity * itemPrice
+          };
+        });
+        
+        const { error: itemsError } = await supabase
+          .from('orcamento_items')
+          .insert(itemsData);
+        
+        if (itemsError) throw itemsError;
+      }
+      
+      return orcamento;
+    },
+    onSuccess: async (data) => {
+      console.log('Orçamento atualizado com sucesso! Invalidando cache...');
+      
+      // ✅ Mesma estratégia para atualização
+      await queryClient.invalidateQueries({ 
+        queryKey: ['orcamentos'],
+        exact: true,
+        refetchType: 'active'
+      });
+      
+      await queryClient.refetchQueries({ 
+        queryKey: ['orcamentos'],
+        type: 'active'
+      });
+      
+      addLog('edit', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
+      setModalOpen(false);
+      setEditingBudget(null);
+    },
+    onError: () => {
+      setIsRefreshing(false);
+    }
+  });
+
+  // Delete budget mutation - CORRIGIDO ✅
+  const deleteBudgetMutation = useMutation({
+    mutationFn: async (budgetId) => {
+      const { error } = await supabase
+        .from('orcamentos')
+        .delete()
+        .eq('id', budgetId);
+      
+      if (error) throw error;
+      return budgetId;
+    },
+    onSuccess: async () => {
+      console.log('Orçamento deletado com sucesso! Invalidando cache...');
+      
+      // ✅ Mesma estratégia para deleção
+      await queryClient.invalidateQueries({ 
+        queryKey: ['orcamentos'],
+        exact: true,
+        refetchType: 'active'
+      });
+      
+      await queryClient.refetchQueries({ 
+        queryKey: ['orcamentos'],
+        type: 'active'
+      });
+    },
+  });
+
+  // Update status mutation - CORRIGIDO ✅
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }) => {
+      const { data, error } = await supabase
+        .from('orcamentos')
+        .update({ status })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: async (data) => {
+      console.log('Status atualizado com sucesso! Invalidando cache...');
+
+     queryClient.setQueryData(['orcamentos'], (oldData) => {
+  if (!oldData) return [data];
+  return [data, ...oldData]; // adiciona no topo da lista
+});
+      
+      // ✅ Mesma estratégia para status
+      await queryClient.invalidateQueries({ 
+        queryKey: ['orcamentos'],
+        exact: true,
+        refetchType: 'active'
+      });
+      
+      addLog('edit', 'orcamento', data.title, `Status alterado para: ${data.status}`);
+    },
+  });
 
   const formatCurrency = (value) => {
-    if (typeof value === 'string' && value.includes('R$')) return value;
-    if (typeof value === 'number') {
-      return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL'
-      }).format(value);
-    }
-    const numericValue = parseFloat(value.toString().replace(/[^ -9.,]/g, '').replace(',', '.'));
-    if (isNaN(numericValue)) return value;
+    const numericValue = typeof value === 'number' ? value : parseFloat(value || 0);
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     }).format(numericValue);
   };
 
-  const handleSaveBudget = (budgetData) => {
-    if (editingBudget) {
-      setBudgets(budgets.map(budget => 
-        budget.id === editingBudget.id ? budgetData : budget
-      ));
-      addLog('edit', 'orcamento', budgetData.title, `Cliente: ${budgetData.client} - Total: ${budgetData.total}`);
-      setEditingBudget(null);
-    } else {
-      setBudgets([...budgets, budgetData]);
-      addLog('create', 'orcamento', budgetData.title, `Cliente: ${budgetData.client} - Total: ${budgetData.total}`);
-    }
-    window.dispatchEvent(new CustomEvent('budgetCreated'));
-  };
-
-  const handleDeleteBudget = (budgetId) => {
-    const budget = budgets.find(b => b.id === budgetId);
-    if (budget) {
-      setBudgets(budgets.filter(b => b.id !== budgetId));
-      addLog('delete', 'orcamento', budget.title, `Cliente: ${budget.client}`);
-      window.dispatchEvent(new CustomEvent('budgetCreated'));
+  const handleSaveBudget = async (budgetData) => {
+    try {
+      console.log('Salvando orçamento:', budgetData);
+      
+      if (editingBudget) {
+        await updateBudgetMutation.mutateAsync({ ...budgetData, id: editingBudget.id });
+      } else {
+        await createBudgetMutation.mutateAsync(budgetData);
+      }
+    } catch (error) {
+      console.error('Erro ao salvar orçamento:', error);
     }
   };
 
-  const handleStatusChange = (budgetId, newStatus) => {
+  const handleDeleteBudget = async (budgetId) => {
     const budget = budgets.find(b => b.id === budgetId);
     if (budget) {
-      setBudgets(budgets.map(b => 
-        b.id === budgetId ? { ...b, status: newStatus } : b
-      ));
-      addLog('edit', 'orcamento', budget.title, `Status alterado para: ${newStatus}`);
-      window.dispatchEvent(new CustomEvent('budgetCreated'));
+      try {
+        await deleteBudgetMutation.mutateAsync(budgetId);
+        addLog('delete', 'orcamento', budget.title, `Cliente: ${budget.client_name}`);
+      } catch (error) {
+        console.error('Error deleting budget:', error);
+      }
+    }
+  };
+
+  const handleStatusChange = async (budgetId, newStatus) => {
+    try {
+      await updateStatusMutation.mutateAsync({ id: budgetId, status: newStatus });
+    } catch (error) {
+      console.error('Error updating status:', error);
     }
   };
 
   const handleEditBudget = (budget) => {
-    setEditingBudget(budget);
+    // Transform the budget data to match the modal's expected format
+    const transformedBudget = {
+      ...budget,
+      deliveryDate: formatDateToBrazilian(budget.date), // Converte para formato brasileiro
+      items: budget.orcamento_items || []
+    };
+    setEditingBudget(transformedBudget);
     setModalOpen(true);
   };
 
@@ -104,22 +460,60 @@ export function Orcamentos() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="p-6 bg-crm-dark min-h-screen flex items-center justify-center">
+        <div className="text-white">Carregando orçamentos...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 bg-crm-dark min-h-screen">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-white">Orçamentos</h1>
-        <Button 
-          onClick={() => {
-            setEditingBudget(null);
-            setModalOpen(true);
-          }}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Orçamento
-        </Button>
+        <div className="flex gap-2 items-center">
+          <Button 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            variant="outline"
+            className="border-gray-600 text-gray-300 hover:bg-gray-700"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Atualizar Lista
+          </Button>
+          <Button 
+            onClick={() => {
+              setEditingBudget(null);
+              setModalOpen(true);
+            }}
+            className="bg-blue-600 hover:bg-blue-700"
+            disabled={createBudgetMutation.isLoading}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            {createBudgetMutation.isLoading ? 'Criando...' : 'Novo Orçamento'}
+          </Button>
+        </div>
       </div>
 
+      {/* Status indicator */}
+      {(isRefreshing || createBudgetMutation.isLoading || updateBudgetMutation.isLoading) && (
+        <div className="mb-4 p-3 bg-blue-600/20 border border-blue-600/30 rounded-lg">
+          <div className="text-blue-400 text-sm flex items-center">
+            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+            {createBudgetMutation.isLoading && 'Criando orçamento...'}
+            {updateBudgetMutation.isLoading && 'Atualizando orçamento...'}
+            {isRefreshing && !createBudgetMutation.isLoading && !updateBudgetMutation.isLoading && 'Atualizando lista...'}
+          </div>
+        </div>
+      )}
+
+      {/* Debug: Mostrar quantos orçamentos temos */}
+      <div className="mb-4 text-white text-sm">
+        Total de orçamentos: {budgets.length}
+      </div>
+
+      {/* Budgets */}
       <div className="grid grid-cols-1 gap-6">
         {budgets.map((budget) => (
           <Card key={budget.id} className="bg-crm-card border-crm-border">
@@ -131,6 +525,7 @@ export function Orcamentos() {
                     <Select
                       value={budget.status}
                       onValueChange={(value) => handleStatusChange(budget.id, value)}
+                      disabled={updateStatusMutation.isLoading}
                     >
                       <SelectTrigger className={`w-32 ${getStatusColor(budget.status)} border-none`}>
                         <SelectValue />
@@ -145,6 +540,7 @@ export function Orcamentos() {
                       variant="ghost" 
                       onClick={() => handleEditBudget(budget)}
                       className="text-gray-400 hover:text-blue-400"
+                      disabled={updateBudgetMutation.isLoading}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -153,26 +549,27 @@ export function Orcamentos() {
                       variant="ghost" 
                       onClick={() => handleDeleteBudget(budget.id)}
                       className="text-gray-400 hover:text-red-400"
+                      disabled={deleteBudgetMutation.isLoading}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                  <p className="text-gray-400">{budget.client}</p>
-                  <p className="text-gray-400 text-sm">{budget.date}</p>
+                  <p className="text-gray-400">{budget.client_name}</p>
+                  <p className="text-gray-400 text-sm">{formatDateToBrazilian(budget.date)}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-gray-400 text-sm">Total do Orçamento</p>
                   <p className="text-2xl font-bold text-blue-400">{formatCurrency(budget.total)}</p>
                 </div>
               </div>
-
+              
               <div className="mt-6">
                 <h4 className="text-white font-medium mb-3">Itens do Orçamento:</h4>
                 <div className="space-y-2">
-                  {budget.items.map((item, index) => (
+                  {budget.orcamento_items?.map((item, index) => (
                     <div key={index} className="flex justify-between text-gray-300">
-                      <span>({item.quantity}x) - {item.name}</span>
-                      <span>{formatCurrency(parseFloat(item.price) * item.quantity)}</span>
+                      <span>({item.quantity}x) - {item.product_name}</span>
+                      <span>{formatCurrency(item.subtotal)}</span>
                     </div>
                   ))}
                 </div>
