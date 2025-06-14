@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, DollarSign, TrendingUp, Calendar } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -14,6 +13,11 @@ export function Dashboard() {
     clientesRecentes: [],
     atividadesRecentes: []
   });
+
+  // Pega o mês/ano atual para filtrar
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth() + 1; // JavaScript months are 0-based
+  const currentYear = currentDate.getFullYear();
 
   // Fetch data from Supabase
   const { data: clientes = [] } = useQuery({
@@ -43,6 +47,19 @@ export function Dashboard() {
     }
   });
 
+  // Buscar faturas para calcular receitas do mês
+  const { data: faturas = [] } = useQuery({
+    queryKey: ['faturas'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('faturas')
+        .select('*');
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
   const { data: despesas = [] } = useQuery({
     queryKey: ['despesas'],
     queryFn: async () => {
@@ -62,21 +79,28 @@ export function Dashboard() {
     }).format(value);
   };
 
+  const isCurrentMonth = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
+  };
+
   const calculateDashboardData = () => {
     // Calcular total de clientes
     const totalClientes = clientes.length;
 
-    // Calcular receitas do mês APENAS dos orçamentos FINALIZADOS
-    const receitasTotal = orcamentos
-      .filter(budget => budget.status === 'Finalizado')
-      .reduce((total, budget) => {
-        return total + parseFloat(budget.total?.toString() || '0');
+    // Calcular receitas do mês das FATURAS do mês atual
+    const receitasTotal = faturas
+      .filter(fatura => isCurrentMonth(fatura.date))
+      .reduce((total, fatura) => {
+        return total + parseFloat(fatura.value?.toString() || '0');
       }, 0);
 
-    // Calcular despesas do mês
-    const despesasTotal = despesas.reduce((total, expense) => {
-      return total + parseFloat(expense.value?.toString() || '0');
-    }, 0);
+    // Calcular despesas do mês atual
+    const despesasTotal = despesas
+      .filter(despesa => isCurrentMonth(despesa.date))
+      .reduce((total, expense) => {
+        return total + parseFloat(expense.value?.toString() || '0');
+      }, 0);
 
     // Contar orçamentos pendentes (status "Aguardando")
     const orcamentosPendentes = orcamentos.filter(budget => budget.status === 'Aguardando').length;
@@ -104,7 +128,7 @@ export function Dashboard() {
 
   useEffect(() => {
     calculateDashboardData();
-  }, [clientes, orcamentos, despesas]);
+  }, [clientes, orcamentos, despesas, faturas]);
 
   const stats = [
     {
