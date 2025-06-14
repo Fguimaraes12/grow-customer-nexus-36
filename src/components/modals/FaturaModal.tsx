@@ -1,10 +1,12 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 interface FaturaModalProps {
   open: boolean;
@@ -21,14 +23,19 @@ export function FaturaModal({ open, onOpenChange, fatura, onSave }: FaturaModalP
     date: fatura?.date || new Date().toISOString().split('T')[0],
   });
 
-  // Carrega clientes do localStorage
-  const clientes = (() => {
-    const savedClients = localStorage.getItem('clientes');
-    return savedClients ? JSON.parse(savedClients) : [
-      { id: 1, name: "João Silva" },
-      { id: 2, name: "Maria Santos" },
-    ];
-  })();
+  // Busca clientes do Supabase
+  const { data: clientes = [] } = useQuery({
+    queryKey: ['clientes'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
 
   const formatPrice = (value: string) => {
     // Remove tudo que não for número
