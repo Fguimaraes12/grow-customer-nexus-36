@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -81,13 +80,25 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
     // Remove tudo que não for número
     const numbersOnly = value.replace(/\D/g, '');
     
-    // Aplica a máscara DD/MM/AAAA
+    // Aplica a máscara baseada no comprimento
     let formattedDate = '';
-    for (let i = 0; i < numbersOnly.length && i < 8; i++) {
-      if (i === 2 || i === 4) {
-        formattedDate += '/';
+    
+    if (numbersOnly.length <= 6) {
+      // Formato curto: DD/MM/AA (máximo 6 dígitos)
+      for (let i = 0; i < numbersOnly.length && i < 6; i++) {
+        if (i === 2 || i === 4) {
+          formattedDate += '/';
+        }
+        formattedDate += numbersOnly[i];
       }
-      formattedDate += numbersOnly[i];
+    } else {
+      // Formato longo: DD/MM/AAAA (máximo 8 dígitos)
+      for (let i = 0; i < numbersOnly.length && i < 8; i++) {
+        if (i === 2 || i === 4) {
+          formattedDate += '/';
+        }
+        formattedDate += numbersOnly[i];
+      }
     }
     
     setDeliveryDate(formattedDate);
@@ -206,7 +217,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
                 type="text"
                 value={deliveryDate}
                 onChange={(e) => handleDateChange(e.target.value)}
-                placeholder="DD/MM/AAAA"
+                placeholder="DD/MM/AAAA ou DD/MM/AA"
                 maxLength={10}
                 className="bg-crm-dark border-crm-border text-white"
               />
