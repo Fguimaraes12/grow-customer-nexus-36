@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,27 @@ import { OrcamentoModal } from "./modals/OrcamentoModal";
 import { useLogs } from "@/contexts/LogsContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+// Type definitions for better TypeScript support
+interface BudgetData {
+  id?: string;
+  title?: string;
+  client: string;
+  deliveryDate: string;
+  status?: string;
+  items: Array<{
+    product_name?: string;
+    name?: string;
+    product?: string;
+    quantity: number;
+    price: string | number;
+  }>;
+}
+
+interface UpdateStatusData {
+  id: string;
+  status: string;
+}
 
 export function Orcamentos() {
   const [modalOpen, setModalOpen] = useState(false);
@@ -130,7 +152,7 @@ export function Orcamentos() {
 
   // Create budget mutation - CORREÇÃO PRINCIPAL ✅
   const createBudgetMutation = useMutation({
-    mutationFn: async (budgetData) => {
+    mutationFn: async (budgetData: BudgetData) => {
       console.log('Criando novo orçamento:', budgetData);
       
       const { items, ...orcamentoData } = budgetData;
@@ -238,7 +260,7 @@ export function Orcamentos() {
 
   // Update budget mutation - CORRIGIDO ✅
   const updateBudgetMutation = useMutation({
-    mutationFn: async (budgetData) => {
+    mutationFn: async (budgetData: BudgetData & { id: string }) => {
       const { items, id, ...orcamentoData } = budgetData;
       
       // Calculate total from items
@@ -313,7 +335,7 @@ export function Orcamentos() {
 
   // Delete budget mutation - CORRIGIDO ✅
   const deleteBudgetMutation = useMutation({
-    mutationFn: async (budgetId) => {
+    mutationFn: async (budgetId: string) => {
       const { error } = await supabase
         .from('orcamentos')
         .delete()
@@ -333,7 +355,7 @@ export function Orcamentos() {
 
   // Update status mutation - CORRIGIDO ✅
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }) => {
+    mutationFn: async ({ id, status }: UpdateStatusData) => {
       const { data, error } = await supabase
         .from('orcamentos')
         .update({ status })
@@ -363,7 +385,7 @@ export function Orcamentos() {
     }).format(numericValue);
   };
 
-  const handleSaveBudget = async (budgetData) => {
+  const handleSaveBudget = async (budgetData: BudgetData) => {
     try {
       console.log('Salvando orçamento:', budgetData);
       
@@ -377,7 +399,7 @@ export function Orcamentos() {
     }
   };
 
-  const handleDeleteBudget = async (budgetId) => {
+  const handleDeleteBudget = async (budgetId: string) => {
     const budget = budgets.find(b => b.id === budgetId);
     if (budget) {
       try {
@@ -389,7 +411,7 @@ export function Orcamentos() {
     }
   };
 
-  const handleStatusChange = async (budgetId, newStatus) => {
+  const handleStatusChange = async (budgetId: string, newStatus: string) => {
     try {
       await updateStatusMutation.mutateAsync({ id: budgetId, status: newStatus });
     } catch (error) {
@@ -447,22 +469,22 @@ export function Orcamentos() {
               setModalOpen(true);
             }}
             className="bg-blue-600 hover:bg-blue-700"
-            disabled={createBudgetMutation.isLoading}
+            disabled={createBudgetMutation.isPending}
           >
             <Plus className="h-4 w-4 mr-2" />
-            {createBudgetMutation.isLoading ? 'Criando...' : 'Novo Orçamento'}
+            {createBudgetMutation.isPending ? 'Criando...' : 'Novo Orçamento'}
           </Button>
         </div>
       </div>
 
       {/* Status indicator */}
-      {(isRefreshing || createBudgetMutation.isLoading || updateBudgetMutation.isLoading) && (
+      {(isRefreshing || createBudgetMutation.isPending || updateBudgetMutation.isPending) && (
         <div className="mb-4 p-3 bg-blue-600/20 border border-blue-600/30 rounded-lg">
           <div className="text-blue-400 text-sm flex items-center">
             <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-            {createBudgetMutation.isLoading && 'Criando orçamento...'}
-            {updateBudgetMutation.isLoading && 'Atualizando orçamento...'}
-            {isRefreshing && !createBudgetMutation.isLoading && !updateBudgetMutation.isLoading && 'Atualizando lista...'}
+            {createBudgetMutation.isPending && 'Criando orçamento...'}
+            {updateBudgetMutation.isPending && 'Atualizando orçamento...'}
+            {isRefreshing && !createBudgetMutation.isPending && !updateBudgetMutation.isPending && 'Atualizando lista...'}
           </div>
         </div>
       )}
@@ -484,7 +506,7 @@ export function Orcamentos() {
                     <Select
                       value={budget.status}
                       onValueChange={(value) => handleStatusChange(budget.id, value)}
-                      disabled={updateStatusMutation.isLoading}
+                      disabled={updateStatusMutation.isPending}
                     >
                       <SelectTrigger className={`w-32 ${getStatusColor(budget.status)} border-none`}>
                         <SelectValue />
@@ -499,7 +521,7 @@ export function Orcamentos() {
                       variant="ghost" 
                       onClick={() => handleEditBudget(budget)}
                       className="text-gray-400 hover:text-blue-400"
-                      disabled={updateBudgetMutation.isLoading}
+                      disabled={updateBudgetMutation.isPending}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -508,7 +530,7 @@ export function Orcamentos() {
                       variant="ghost" 
                       onClick={() => handleDeleteBudget(budget.id)}
                       className="text-gray-400 hover:text-red-400"
-                      disabled={deleteBudgetMutation.isLoading}
+                      disabled={deleteBudgetMutation.isPending}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
