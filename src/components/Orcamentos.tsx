@@ -8,6 +8,7 @@ import { OrcamentoModal } from "./modals/OrcamentoModal";
 import { useLogs } from "@/contexts/LogsContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 // Type definitions for better TypeScript support
 interface BudgetData {
@@ -34,25 +35,13 @@ export function Orcamentos() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
   const { addLog } = useLogs();
   const queryClient = useQueryClient();
-
-  // Auto-refresh a cada 30 segundos quando habilitado
-  useEffect(() => {
-    if (!autoRefreshEnabled) return;
-
-    const interval = setInterval(() => {
-      console.log('Auto-refresh executado');
-      refetch();
-    }, 30000); // 30 segundos
-
-    return () => clearInterval(interval);
-  }, [autoRefreshEnabled]);
+  const { toast } = useToast();
 
   // Função para converter data brasileira (dd/mm/yyyy) para formato ISO (yyyy-mm-dd)
-  const convertBrazilianDateToISO = (brazilianDate) => {
-    if (!brazilianDate) return new Date().toISOString().split('T')[0];
+  const convertBrazilianDateToISO = (brazilianDate: string) => {
+    if (!brazilianDate) return null;
     
     // Se já está no formato ISO (yyyy-mm-dd), retorna como está
     if (brazilianDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -67,17 +56,16 @@ export function Orcamentos() {
       return `${year}-${formattedMonth}-${formattedDay}`;
     }
     
-    // Fallback para data atual
-    return new Date().toISOString().split('T')[0];
+    return null;
   };
 
   // Função para formatar data ISO (yyyy-mm-dd) para formato brasileiro (dd/mm/yyyy)
-  const formatDateToBrazilian = (isoDate) => {
+  const formatDateToBrazilian = (isoDate: string) => {
     if (!isoDate) return '';
     return isoDate.split('-').reverse().join('/');
   };
 
-  // Query para buscar orçamentos - CORREÇÃO PRINCIPAL ✅
+  // Query para buscar orçamentos
   const { data: budgets = [], isLoading, refetch } = useQuery({
     queryKey: ['orcamentos'],
     queryFn: async () => {
@@ -104,8 +92,8 @@ export function Orcamentos() {
       console.log('Orçamentos carregados:', data);
       return data;
     },
-    staleTime: 0, // Dados sempre considerados desatualizados
-    gcTime: 0, // Remove cache imediatamente
+    staleTime: 0,
+    gcTime: 0,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
     refetchOnReconnect: true,
@@ -145,12 +133,22 @@ export function Orcamentos() {
     setIsRefreshing(true);
     try {
       await refetch();
+      toast({
+        title: "Lista atualizada",
+        description: "Os orçamentos foram atualizados com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar a lista de orçamentos.",
+        variant: "destructive",
+      });
     } finally {
       setIsRefreshing(false);
     }
   };
 
-  // Create budget mutation - CORREÇÃO PRINCIPAL ✅
+  // Create budget mutation
   const createBudgetMutation = useMutation({
     mutationFn: async (budgetData: BudgetData) => {
       console.log('Criando novo orçamento:', budgetData);
@@ -165,11 +163,11 @@ export function Orcamentos() {
         return total + (item.quantity * itemPrice);
       }, 0);
 
-      // Prepare orçamento data
+      // Prepare orçamento data - usar delivery_date em vez de date
       const dataToInsert = {
         title: orcamentoData.title || `Orçamento #${Date.now()}`,
         client_name: orcamentoData.client,
-        date: convertBrazilianDateToISO(orcamentoData.deliveryDate),
+        delivery_date: convertBrazilianDateToISO(orcamentoData.deliveryDate),
         total: totalValue,
         status: orcamentoData.status || 'Aguardando'
       };
@@ -201,8 +199,7 @@ export function Orcamentos() {
             orcamento_id: orcamento.id,
             product_name: item.product_name ?? item.name ?? item.product,
             price: itemPrice,
-            quantity: item.quantity,
-            subtotal: item.quantity * itemPrice
+            quantity: item.quantity
           };
         });
         
@@ -220,45 +217,35 @@ export function Orcamentos() {
         console.log('Itens criados com sucesso');
       }
       
-      // Buscar orçamento completo com os itens
-      const { data: fullBudget, error: fetchError } = await supabase
-        .from('orcamentos')
-        .select(`
-          *,
-          orcamento_items (
-            id,
-            product_name,
-            price,
-            quantity,
-            subtotal
-          )
-        `)
-        .eq('id', orcamento.id)
-        .single();
-
-      if (fetchError) {
-        console.error('Erro ao buscar orçamento completo:', fetchError);
-        throw fetchError;
-      }
-
-      return fullBudget;
+      return orcamento;
     },
     onSuccess: async (data) => {
-      console.log('Orçamento criado com sucesso! Forçando atualização imediata...');
+      console.log('Orçamento criado com sucesso!');
       
-      // 🔧 ESTRATÉGIA PRINCIPAL: Limpar cache completamente e refetch
-      queryClient.removeQueries({ queryKey: ['orcamentos'] });
-      
-      // Força nova busca imediata
+      // Invalidate and refetch
+      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
       await refetch();
       
       addLog('create', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
       setModalOpen(false);
       setEditingBudget(null);
+      
+      toast({
+        title: "Orçamento criado",
+        description: `Orçamento para ${data.client_name} foi criado com sucesso.`,
+      });
+    },
+    onError: (error) => {
+      console.error('Erro ao criar orçamento:', error);
+      toast({
+        title: "Erro ao criar orçamento",
+        description: "Não foi possível criar o orçamento. Tente novamente.",
+        variant: "destructive",
+      });
     }
   });
 
-  // Update budget mutation - CORRIGIDO ✅
+  // Update budget mutation
   const updateBudgetMutation = useMutation({
     mutationFn: async (budgetData: BudgetData & { id: string }) => {
       const { items, id, ...orcamentoData } = budgetData;
@@ -271,12 +258,12 @@ export function Orcamentos() {
         return total + (item.quantity * itemPrice);
       }, 0);
 
-      // Update the budget
+      // Update the budget - usar delivery_date
       const { data: orcamento, error: orcamentoError } = await supabase
         .from('orcamentos')
         .update({
           client_name: orcamentoData.client,
-          date: convertBrazilianDateToISO(orcamentoData.deliveryDate),
+          delivery_date: convertBrazilianDateToISO(orcamentoData.deliveryDate),
           total: totalValue,
           status: orcamentoData.status || 'Aguardando'
         })
@@ -303,8 +290,7 @@ export function Orcamentos() {
             orcamento_id: id,
             product_name: item.name,
             price: itemPrice,
-            quantity: item.quantity,
-            subtotal: item.quantity * itemPrice
+            quantity: item.quantity
           };
         });
         
@@ -318,22 +304,31 @@ export function Orcamentos() {
       return orcamento;
     },
     onSuccess: async (data) => {
-      console.log('Orçamento atualizado com sucesso! Forçando atualização imediata...');
+      console.log('Orçamento atualizado com sucesso!');
       
-      // 🔧 Mesma estratégia para atualização
-      queryClient.removeQueries({ queryKey: ['orcamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
       await refetch();
       
       addLog('edit', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
       setModalOpen(false);
       setEditingBudget(null);
+      
+      toast({
+        title: "Orçamento atualizado",
+        description: `Orçamento para ${data.client_name} foi atualizado com sucesso.`,
+      });
     },
-    onError: () => {
-      setIsRefreshing(false);
+    onError: (error) => {
+      console.error('Erro ao atualizar orçamento:', error);
+      toast({
+        title: "Erro ao atualizar orçamento",
+        description: "Não foi possível atualizar o orçamento. Tente novamente.",
+        variant: "destructive",
+      });
     }
   });
 
-  // Delete budget mutation - CORRIGIDO ✅
+  // Delete budget mutation
   const deleteBudgetMutation = useMutation({
     mutationFn: async (budgetId: string) => {
       const { error } = await supabase
@@ -345,15 +340,27 @@ export function Orcamentos() {
       return budgetId;
     },
     onSuccess: async () => {
-      console.log('Orçamento deletado com sucesso! Forçando atualização imediata...');
+      console.log('Orçamento deletado com sucesso!');
       
-      // 🔧 Mesma estratégia para deleção
-      queryClient.removeQueries({ queryKey: ['orcamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
       await refetch();
+      
+      toast({
+        title: "Orçamento excluído",
+        description: "O orçamento foi excluído com sucesso.",
+      });
     },
+    onError: (error) => {
+      console.error('Erro ao deletar orçamento:', error);
+      toast({
+        title: "Erro ao excluir orçamento",
+        description: "Não foi possível excluir o orçamento. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   });
 
-  // Update status mutation - CORRIGIDO ✅
+  // Update status mutation
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: UpdateStatusData) => {
       const { data, error } = await supabase
@@ -367,18 +374,30 @@ export function Orcamentos() {
       return data;
     },
     onSuccess: async (data) => {
-      console.log('Status atualizado com sucesso! Forçando atualização imediata...');
+      console.log('Status atualizado com sucesso!');
       
-      // 🔧 Mesma estratégia para status
-      queryClient.removeQueries({ queryKey: ['orcamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
       await refetch();
       
       addLog('edit', 'orcamento', data.title, `Status alterado para: ${data.status}`);
+      
+      toast({
+        title: "Status atualizado",
+        description: `Status do orçamento alterado para ${data.status}.`,
+      });
     },
+    onError: (error) => {
+      console.error('Erro ao atualizar status:', error);
+      toast({
+        title: "Erro ao atualizar status",
+        description: "Não foi possível atualizar o status. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   });
 
-  const formatCurrency = (value) => {
-    const numericValue = typeof value === 'number' ? value : parseFloat(value || 0);
+  const formatCurrency = (value: number | string) => {
+    const numericValue = typeof value === 'number' ? value : parseFloat(value || '0');
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
@@ -419,18 +438,18 @@ export function Orcamentos() {
     }
   };
 
-  const handleEditBudget = (budget) => {
+  const handleEditBudget = (budget: any) => {
     // Transform the budget data to match the modal's expected format
     const transformedBudget = {
       ...budget,
-      deliveryDate: formatDateToBrazilian(budget.date), // Converte para formato brasileiro
+      deliveryDate: formatDateToBrazilian(budget.delivery_date), // Usar delivery_date
       items: budget.orcamento_items || []
     };
     setEditingBudget(transformedBudget);
     setModalOpen(true);
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'Finalizado':
         return 'bg-green-600 text-white border-green-600';
@@ -536,7 +555,10 @@ export function Orcamentos() {
                     </Button>
                   </div>
                   <p className="text-gray-400">{budget.client_name}</p>
-                  <p className="text-gray-400 text-sm">{formatDateToBrazilian(budget.date)}</p>
+                  <p className="text-gray-400 text-sm">Criado: {formatDateToBrazilian(budget.date)}</p>
+                  {budget.delivery_date && (
+                    <p className="text-gray-400 text-sm">Entrega: {formatDateToBrazilian(budget.delivery_date)}</p>
+                  )}
                 </div>
                 <div className="text-right">
                   <p className="text-gray-400 text-sm">Total do Orçamento</p>
@@ -547,7 +569,7 @@ export function Orcamentos() {
               <div className="mt-6">
                 <h4 className="text-white font-medium mb-3">Itens do Orçamento:</h4>
                 <div className="space-y-2">
-                  {budget.orcamento_items?.map((item, index) => (
+                  {budget.orcamento_items?.map((item: any, index: number) => (
                     <div key={index} className="flex justify-between text-gray-300">
                       <span>({item.quantity}x) - {item.product_name}</span>
                       <span>{formatCurrency(item.subtotal)}</span>

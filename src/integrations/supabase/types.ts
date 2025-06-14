@@ -167,13 +167,6 @@ export type Database = {
             referencedRelation: "clientes"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "faturas_orcamento_id_fkey"
-            columns: ["orcamento_id"]
-            isOneToOne: false
-            referencedRelation: "orcamentos"
-            referencedColumns: ["id"]
-          },
         ]
       }
       logs: {
@@ -213,7 +206,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          orcamento_id: string | null
+          orcamento_id: string
           price: number
           product_name: string
           quantity: number
@@ -222,7 +215,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
-          orcamento_id?: string | null
+          orcamento_id: string
           price: number
           product_name: string
           quantity?: number
@@ -231,7 +224,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
-          orcamento_id?: string | null
+          orcamento_id?: string
           price?: number
           product_name?: string
           quantity?: number
@@ -253,6 +246,7 @@ export type Database = {
           client_name: string
           created_at: string
           date: string
+          delivery_date: string | null
           id: string
           status: string
           title: string
@@ -264,6 +258,7 @@ export type Database = {
           client_name: string
           created_at?: string
           date?: string
+          delivery_date?: string | null
           id?: string
           status?: string
           title: string
@@ -275,6 +270,7 @@ export type Database = {
           client_name?: string
           created_at?: string
           date?: string
+          delivery_date?: string | null
           id?: string
           status?: string
           title?: string

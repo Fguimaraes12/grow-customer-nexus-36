@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -22,21 +23,19 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
 
   useEffect(() => {
     if (budget) {
-      setSelectedClient(budget.client);
+      setSelectedClient(budget.client_name || "");
       // Se tem data de entrega salva, formata para DD/MM/AAAA
       if (budget.deliveryDate) {
-        const date = new Date(budget.deliveryDate + 'T00:00:00'); // Força horário local
-        const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
-        setDeliveryDate(formattedDate);
+        setDeliveryDate(budget.deliveryDate);
       } else {
         setDeliveryDate("");
       }
-      setItems(budget.items.map((item: any) => ({
-        product: item.name,
+      setItems(budget.items?.map((item: any) => ({
+        product: item.product_name || item.name || "",
         quantity: item.quantity,
         price: parseFloat(item.price),
         priceInput: formatPriceInput(parseFloat(item.price))
-      })));
+      })) || [{ product: "", quantity: 1, price: 0, priceInput: "" }]);
     } else {
       setSelectedClient("");
       setDeliveryDate("");
@@ -92,36 +91,6 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
     }
     
     setDeliveryDate(formattedDate);
-  };
-
-  const parseDateToISO = (dateString: string) => {
-    if (!dateString) return null;
-    
-    // Aceita tanto DD/MM/AA quanto DD/MM/AAAA
-    const parts = dateString.split('/');
-    if (parts.length !== 3) return null;
-    
-    const [day, month, year] = parts;
-    if (!day || !month || !year) return null;
-    
-    // Converte ano de 2 dígitos para 4 dígitos
-    let fullYear = year;
-    if (year.length === 2) {
-      const currentYear = new Date().getFullYear();
-      const currentCentury = Math.floor(currentYear / 100) * 100;
-      const yearNumber = parseInt(year);
-      
-      // Se o ano de 2 dígitos for maior que os últimos 2 dígitos do ano atual + 10,
-      // assume século anterior, senão assume século atual
-      if (yearNumber > (currentYear % 100) + 10) {
-        fullYear = (currentCentury - 100 + yearNumber).toString();
-      } else {
-        fullYear = (currentCentury + yearNumber).toString();
-      }
-    }
-    
-    // Cria a data em formato YYYY-MM-DD para evitar problemas de fuso horário
-    return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   };
 
   const addItem = () => {
@@ -188,7 +157,7 @@ export function OrcamentoModal({ open, onOpenChange, clientes, produtos, budget,
       title: budget?.title || `Orçamento #${Date.now()}`,
       client: selectedClient,
       date: budget?.date || new Date().toLocaleDateString('pt-BR'),
-      deliveryDate: parseDateToISO(deliveryDate),
+      deliveryDate: deliveryDate,
       total: totalValue,
       status: budget?.status || "Aguardando",
       items: validItems,
