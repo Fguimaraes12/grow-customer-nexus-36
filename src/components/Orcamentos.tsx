@@ -55,7 +55,7 @@ export function Orcamentos() {
     return isoDate.split('-').reverse().join('/');
   };
 
-  // Query para buscar orçamentos - CORRIGIDO ✅
+  // Query para buscar orçamentos - CORREÇÃO PRINCIPAL ✅
   const { data: budgets = [], isLoading, refetch } = useQuery({
     queryKey: ['orcamentos'],
     queryFn: async () => {
@@ -82,13 +82,12 @@ export function Orcamentos() {
       console.log('Orçamentos carregados:', data);
       return data;
     },
-    // ✅ CORREÇÕES PRINCIPAIS:
     staleTime: 0, // Dados sempre considerados desatualizados
-    gcTime: 300000, // Substitui cacheTime (nova API)
+    gcTime: 0, // Remove cache imediatamente
     refetchOnWindowFocus: true,
-    refetchOnMount: true, // Sempre refetch ao montar
-    refetchOnReconnect: true, // Refetch ao reconectar
-    retry: 3, // Retry em caso de erro
+    refetchOnMount: true,
+    refetchOnReconnect: true,
+    retry: 3,
   });
 
   // Fetch clients for the modal
@@ -129,7 +128,7 @@ export function Orcamentos() {
     }
   };
 
-  // Create budget mutation - CORRIGIDO ✅
+  // Create budget mutation - CORREÇÃO PRINCIPAL ✅
   const createBudgetMutation = useMutation({
     mutationFn: async (budgetData) => {
       console.log('Criando novo orçamento:', budgetData);
@@ -178,7 +177,7 @@ export function Orcamentos() {
           
           return {
             orcamento_id: orcamento.id,
-            product_name: item.product_name ?? item.name ?? item.product, // fallback para garantir
+            product_name: item.product_name ?? item.name ?? item.product,
             price: itemPrice,
             quantity: item.quantity,
             subtotal: item.quantity * itemPrice
@@ -198,59 +197,43 @@ export function Orcamentos() {
         
         console.log('Itens criados com sucesso');
       }
-       
       
       // Buscar orçamento completo com os itens
-const { data: fullBudget, error: fetchError } = await supabase
-  .from('orcamentos')
-  .select(`
-    *,
-    orcamento_items (
-      id,
-      product_name,
-      price,
-      quantity,
-      subtotal
-    )
-  `)
-  .eq('id', orcamento.id)
-  .single();
+      const { data: fullBudget, error: fetchError } = await supabase
+        .from('orcamentos')
+        .select(`
+          *,
+          orcamento_items (
+            id,
+            product_name,
+            price,
+            quantity,
+            subtotal
+          )
+        `)
+        .eq('id', orcamento.id)
+        .single();
 
-if (fetchError) {
-  console.error('Erro ao buscar orçamento completo:', fetchError);
-  throw fetchError;
-}
+      if (fetchError) {
+        console.error('Erro ao buscar orçamento completo:', fetchError);
+        throw fetchError;
+      }
 
-return fullBudget;
-
+      return fullBudget;
     },
     onSuccess: async (data) => {
-  console.log('Orçamento criado com sucesso! Invalidando cache...');
-  
-  await queryClient.invalidateQueries({ 
-    queryKey: ['orcamentos'],
-    exact: true,
-    refetchType: 'active'
-  });
-
-  await queryClient.refetchQueries({ 
-    queryKey: ['orcamentos'],
-    type: 'active'
-  });
-
-  await queryClient.resetQueries({ 
-    queryKey: ['orcamentos'],
-    exact: true
-  });
-
-  // 🔧 Força a reatualização na hora
-  await refetch(); // <--- ADICIONE ESSA LINHA
-
-  addLog('create', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
-  setModalOpen(false);
-  setEditingBudget(null);
-}
-
+      console.log('Orçamento criado com sucesso! Forçando atualização imediata...');
+      
+      // 🔧 ESTRATÉGIA PRINCIPAL: Limpar cache completamente e refetch
+      queryClient.removeQueries({ queryKey: ['orcamentos'] });
+      
+      // Força nova busca imediata
+      await refetch();
+      
+      addLog('create', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
+      setModalOpen(false);
+      setEditingBudget(null);
+    }
   });
 
   // Update budget mutation - CORRIGIDO ✅
@@ -313,19 +296,11 @@ return fullBudget;
       return orcamento;
     },
     onSuccess: async (data) => {
-      console.log('Orçamento atualizado com sucesso! Invalidando cache...');
+      console.log('Orçamento atualizado com sucesso! Forçando atualização imediata...');
       
-      // ✅ Mesma estratégia para atualização
-      await queryClient.invalidateQueries({ 
-        queryKey: ['orcamentos'],
-        exact: true,
-        refetchType: 'active'
-      });
-      
-      await queryClient.refetchQueries({ 
-        queryKey: ['orcamentos'],
-        type: 'active'
-      });
+      // 🔧 Mesma estratégia para atualização
+      queryClient.removeQueries({ queryKey: ['orcamentos'] });
+      await refetch();
       
       addLog('edit', 'orcamento', data.title, `Cliente: ${data.client_name} - Total: R$ ${data.total}`);
       setModalOpen(false);
@@ -348,19 +323,11 @@ return fullBudget;
       return budgetId;
     },
     onSuccess: async () => {
-      console.log('Orçamento deletado com sucesso! Invalidando cache...');
+      console.log('Orçamento deletado com sucesso! Forçando atualização imediata...');
       
-      // ✅ Mesma estratégia para deleção
-      await queryClient.invalidateQueries({ 
-        queryKey: ['orcamentos'],
-        exact: true,
-        refetchType: 'active'
-      });
-      
-      await queryClient.refetchQueries({ 
-        queryKey: ['orcamentos'],
-        type: 'active'
-      });
+      // 🔧 Mesma estratégia para deleção
+      queryClient.removeQueries({ queryKey: ['orcamentos'] });
+      await refetch();
     },
   });
 
@@ -378,19 +345,11 @@ return fullBudget;
       return data;
     },
     onSuccess: async (data) => {
-      console.log('Status atualizado com sucesso! Invalidando cache...');
-
-     queryClient.setQueryData(['orcamentos'], (oldData) => {
-  if (!oldData) return [data];
-  return [data, ...oldData]; // adiciona no topo da lista
-});
+      console.log('Status atualizado com sucesso! Forçando atualização imediata...');
       
-      // ✅ Mesma estratégia para status
-      await queryClient.invalidateQueries({ 
-        queryKey: ['orcamentos'],
-        exact: true,
-        refetchType: 'active'
-      });
+      // 🔧 Mesma estratégia para status
+      queryClient.removeQueries({ queryKey: ['orcamentos'] });
+      await refetch();
       
       addLog('edit', 'orcamento', data.title, `Status alterado para: ${data.status}`);
     },
