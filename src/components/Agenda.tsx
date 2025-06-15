@@ -7,9 +7,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
 export function Agenda() {
-  const { data: budgets = [], isLoading } = useQuery({
+  const { data: budgets = [], isLoading, refetch } = useQuery({
     queryKey: ['orcamentos-agenda'],
     queryFn: async () => {
+      console.log('🔍 Executando query da agenda...');
       const { data, error } = await supabase
         .from('orcamentos')
         .select(`
@@ -25,9 +26,33 @@ export function Agenda() {
         .eq('status', 'Aguardando')
         .order('delivery_date', { ascending: true, nullsFirst: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro ao buscar orçamentos da agenda:', error);
+        throw error;
+      }
+      
+      console.log('✅ Orçamentos da agenda carregados:', data);
+      console.log('📊 Quantidade de orçamentos "Aguardando":', data?.length || 0);
+      
+      // Log detalhado dos status
+      data?.forEach((budget, index) => {
+        console.log(`📋 Orçamento ${index + 1}:`, {
+          id: budget.id,
+          title: budget.title,
+          client: budget.client_name,
+          status: budget.status,
+          delivery_date: budget.delivery_date
+        });
+      });
+      
       return data;
-    }
+    },
+    staleTime: 0, // Sempre buscar dados frescos
+    gcTime: 0, // Não manter cache
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
+    retry: 3,
   });
 
   const getDeliveryStatus = (deliveryDate: string | null) => {
@@ -84,6 +109,12 @@ export function Agenda() {
   const budgetsWithDate = budgets.filter(budget => budget.delivery_date);
   const budgetsWithoutDate = budgets.filter(budget => !budget.delivery_date);
 
+  console.log('🎯 Renderizando Agenda com:', {
+    totalBudgets: budgets.length,
+    budgetsWithDate: budgets.filter(b => b.delivery_date).length,
+    budgetsWithoutDate: budgets.filter(b => !b.delivery_date).length
+  });
+
   if (isLoading) {
     return (
       <div className="p-6 bg-crm-dark min-h-screen flex items-center justify-center">
@@ -97,6 +128,23 @@ export function Agenda() {
       <div className="flex items-center gap-3 mb-8">
         <Calendar className="h-8 w-8 text-blue-400" />
         <h1 className="text-3xl font-bold text-white">Agenda de Entregas</h1>
+        <button 
+          onClick={() => {
+            console.log('🔄 Forçando refetch da agenda...');
+            refetch();
+          }}
+          className="ml-4 px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+        >
+          Atualizar
+        </button>
+      </div>
+
+      {/* Debug info */}
+      <div className="mb-4 p-3 bg-gray-800 rounded text-white text-sm">
+        <div>🔍 Debug: Mostrando apenas orçamentos com status "Aguardando"</div>
+        <div>📊 Total encontrado: {budgets.length} orçamentos</div>
+        <div>📅 Com data: {budgets.filter(b => b.delivery_date).length}</div>
+        <div>❓ Sem data: {budgets.filter(b => !b.delivery_date).length}</div>
       </div>
 
       {budgets.length === 0 ? (
@@ -112,14 +160,14 @@ export function Agenda() {
       ) : (
         <div className="space-y-8">
           {/* Orçamentos com data de entrega */}
-          {budgetsWithDate.length > 0 && (
+          {budgets.filter(budget => budget.delivery_date).length > 0 && (
             <div>
               <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
                 Entregas Agendadas
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {budgetsWithDate.map((budget) => {
+                {budgets.filter(budget => budget.delivery_date).map((budget) => {
                   const deliveryStatus = getDeliveryStatus(budget.delivery_date);
                   
                   return (
@@ -180,14 +228,14 @@ export function Agenda() {
           )}
 
           {/* Orçamentos sem data de entrega */}
-          {budgetsWithoutDate.length > 0 && (
+          {budgets.filter(budget => !budget.delivery_date).length > 0 && (
             <div>
               <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-yellow-500" />
                 Orçamentos Sem Data de Entrega
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {budgetsWithoutDate.map((budget) => {
+                {budgets.filter(budget => !budget.delivery_date).map((budget) => {
                   const deliveryStatus = getDeliveryStatus(budget.delivery_date);
                   
                   return (
