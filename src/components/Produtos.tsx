@@ -4,19 +4,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Plus, Edit, Trash2, FileText, Tag } from "lucide-react";
 import { ProdutoModal } from "./modals/ProdutoModal";
+import { LoadingScreen } from "./LoadingScreen";
 import { useLogs } from "@/contexts/LogsContext";
+import { useDataContext } from "@/contexts/DataContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { usePreloadedProducts } from "@/hooks/usePreloadedData";
 
 export function Produtos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const { addLog } = useLogs();
+  const { isPreloading } = useDataContext();
   const queryClient = useQueryClient();
 
+  // Usa dados pré-carregados
+  const { data: products = [], isLoading } = usePreloadedProducts();
+
   // Fetch products from Supabase
-  const { data: products = [], isLoading } = useQuery({
+  const { data: products = [], isLoading: productsLoading } = useQuery({
     queryKey: ['produtos'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -159,12 +166,9 @@ export function Produtos() {
     setModalOpen(true);
   };
 
-  if (isLoading) {
-    return (
-      <div className="p-6 bg-crm-dark min-h-screen flex items-center justify-center">
-        <div className="text-white">Carregando produtos...</div>
-      </div>
-    );
+  // Se ainda está pré-carregando, mostra a tela de loading
+  if (isPreloading || isLoading) {
+    return <LoadingScreen />;
   }
 
   return (
