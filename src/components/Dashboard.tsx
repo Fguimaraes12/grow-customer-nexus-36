@@ -1,8 +1,15 @@
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, DollarSign, TrendingUp, Calendar } from "lucide-react";
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useDataContext } from "@/contexts/DataContext";
+import { LoadingScreen } from "./LoadingScreen";
+import { 
+  usePreloadedClients, 
+  usePreloadedBudgets, 
+  usePreloadedInvoices, 
+  usePreloadedExpenses 
+} from "@/hooks/usePreloadedData";
 
 export function Dashboard() {
   const [dashboardData, setDashboardData] = useState({
@@ -14,63 +21,18 @@ export function Dashboard() {
     atividadesRecentes: []
   });
 
+  const { isPreloading } = useDataContext();
+
+  // Usa dados pré-carregados
+  const { data: clientes = [] } = usePreloadedClients();
+  const { data: orcamentos = [] } = usePreloadedBudgets();
+  const { data: faturas = [] } = usePreloadedInvoices();
+  const { data: despesas = [] } = usePreloadedExpenses();
+
   // Pega o mês/ano atual para filtrar
   const currentDate = new Date();
   const currentMonth = currentDate.getMonth() + 1; // JavaScript months are 0-based
   const currentYear = currentDate.getFullYear();
-
-  // Fetch data from Supabase
-  const { data: clientes = [] } = useQuery({
-    queryKey: ['clientes'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('clientes')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(2);
-      
-      if (error) throw error;
-      return data;
-    }
-  });
-
-  const { data: orcamentos = [] } = useQuery({
-    queryKey: ['orcamentos'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('orcamentos')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data;
-    }
-  });
-
-  // Buscar faturas para calcular receitas do mês
-  const { data: faturas = [] } = useQuery({
-    queryKey: ['faturas'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('faturas')
-        .select('*');
-      
-      if (error) throw error;
-      return data;
-    }
-  });
-
-  const { data: despesas = [] } = useQuery({
-    queryKey: ['despesas'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('despesas')
-        .select('*');
-      
-      if (error) throw error;
-      return data;
-    }
-  });
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -142,6 +104,11 @@ export function Dashboard() {
   useEffect(() => {
     calculateDashboardData();
   }, [clientes, orcamentos, despesas, faturas]);
+
+  // Se ainda está pré-carregando, mostra a tela de loading
+  if (isPreloading) {
+    return <LoadingScreen />;
+  }
 
   const stats = [
     {
