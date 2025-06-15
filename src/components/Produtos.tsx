@@ -22,20 +22,6 @@ export function Produtos() {
   // Usa dados pré-carregados
   const { data: products = [], isLoading } = usePreloadedProducts();
 
-  // Fetch products from Supabase
-  const { data: products = [], isLoading: productsLoading } = useQuery({
-    queryKey: ['produtos'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('produtos')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data;
-    }
-  });
-
   // Create product mutation
   const createProductMutation = useMutation({
     mutationFn: async (productData: any) => {
