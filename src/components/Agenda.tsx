@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, User, Package, DollarSign } from "lucide-react";
+import { Calendar, Clock, User, Package, DollarSign, AlertTriangle } from "lucide-react";
 import { format, isAfter, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,15 +24,18 @@ export function Agenda() {
           )
         `)
         .eq('status', 'Aguardando')
-        .not('delivery_date', 'is', null)
-        .order('delivery_date', { ascending: true });
+        .order('delivery_date', { ascending: true, nullsLast: true });
       
       if (error) throw error;
       return data;
     }
   });
 
-  const getDeliveryStatus = (deliveryDate: string) => {
+  const getDeliveryStatus = (deliveryDate: string | null) => {
+    if (!deliveryDate) {
+      return { status: "sem-data", color: "bg-gray-600 text-white" };
+    }
+    
     const today = new Date();
     const delivery = new Date(deliveryDate + 'T00:00:00');
     
@@ -45,7 +48,8 @@ export function Agenda() {
     }
   };
 
-  const formatDeliveryDate = (dateString: string) => {
+  const formatDeliveryDate = (dateString: string | null) => {
+    if (!dateString) return "Data não definida";
     const date = new Date(dateString + 'T00:00:00');
     return format(date, "dd/MM/yyyy", { locale: ptBR });
   };
@@ -58,6 +62,8 @@ export function Agenda() {
         return "Atrasado";
       case "agendado":
         return "Agendado";
+      case "sem-data":
+        return "Sem Data";
       default:
         return "Agendado";
     }
@@ -74,6 +80,10 @@ export function Agenda() {
       currency: 'BRL'
     }).format(numericValue);
   };
+
+  // Separar orçamentos com e sem data de entrega
+  const budgetsWithDate = budgets.filter(budget => budget.delivery_date);
+  const budgetsWithoutDate = budgets.filter(budget => !budget.delivery_date);
 
   if (isLoading) {
     return (
@@ -96,68 +106,147 @@ export function Agenda() {
             <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-white mb-2">Nenhuma entrega pendente</h3>
             <p className="text-gray-400">
-              Apenas orçamentos "Aguardando" com data de entrega aparecerão aqui.
+              Apenas orçamentos "Aguardando" aparecerão aqui.
             </p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {budgets.map((budget) => {
-            const deliveryStatus = getDeliveryStatus(budget.delivery_date);
-            
-            return (
-              <Card key={budget.id} className="bg-crm-card border-crm-border hover:bg-crm-card/80 transition-colors">
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg text-white">{budget.title}</CardTitle>
-                    <Badge className={deliveryStatus.color}>
-                      {getStatusText(deliveryStatus.status)}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center gap-2 text-gray-300">
-                    <User className="h-4 w-4" />
-                    <span className="font-medium">{budget.client_name}</span>
-                  </div>
+        <div className="space-y-8">
+          {/* Orçamentos com data de entrega */}
+          {budgetsWithDate.length > 0 && (
+            <div>
+              <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Entregas Agendadas
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {budgetsWithDate.map((budget) => {
+                  const deliveryStatus = getDeliveryStatus(budget.delivery_date);
                   
-                  <div className="flex items-center gap-2 text-gray-300">
-                    <Clock className="h-4 w-4" />
-                    <span>Entrega: {formatDeliveryDate(budget.delivery_date)}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-gray-300">
-                    <Package className="h-4 w-4" />
-                    <span>Quantidade: {getTotalQuantity(budget.orcamento_items)} itens</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-blue-400">
-                    <DollarSign className="h-4 w-4" />
-                    <span className="font-semibold">{formatCurrency(budget.total)}</span>
-                  </div>
-                  
-                  <div className="pt-2 border-t border-crm-border">
-                    <p className="text-gray-400 text-sm mb-2">Produtos:</p>
-                    <div className="space-y-1">
-                      {budget.orcamento_items?.slice(0, 3).map((item, index) => (
-                        <div key={index} className="text-sm text-gray-300 flex justify-between">
-                          <span>{item.quantity || 0}x {item.product_name || 'Produto sem nome'}</span>
-                          <span className="text-gray-400">
-                            {formatCurrency(item.subtotal || 0)}
-                          </span>
+                  return (
+                    <Card key={budget.id} className="bg-crm-card border-crm-border hover:bg-crm-card/80 transition-colors">
+                      <CardHeader className="pb-3">
+                        <div className="flex justify-between items-start">
+                          <CardTitle className="text-lg text-white">{budget.title}</CardTitle>
+                          <Badge className={deliveryStatus.color}>
+                            {getStatusText(deliveryStatus.status)}
+                          </Badge>
                         </div>
-                      ))}
-                      {budget.orcamento_items && budget.orcamento_items.length > 3 && (
-                        <div className="text-sm text-gray-400">
-                          +{budget.orcamento_items.length - 3} produto(s)
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center gap-2 text-gray-300">
+                          <User className="h-4 w-4" />
+                          <span className="font-medium">{budget.client_name}</span>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                        
+                        <div className="flex items-center gap-2 text-gray-300">
+                          <Clock className="h-4 w-4" />
+                          <span>Entrega: {formatDeliveryDate(budget.delivery_date)}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 text-gray-300">
+                          <Package className="h-4 w-4" />
+                          <span>Quantidade: {getTotalQuantity(budget.orcamento_items)} itens</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 text-blue-400">
+                          <DollarSign className="h-4 w-4" />
+                          <span className="font-semibold">{formatCurrency(budget.total)}</span>
+                        </div>
+                        
+                        <div className="pt-2 border-t border-crm-border">
+                          <p className="text-gray-400 text-sm mb-2">Produtos:</p>
+                          <div className="space-y-1">
+                            {budget.orcamento_items?.slice(0, 3).map((item, index) => (
+                              <div key={index} className="text-sm text-gray-300 flex justify-between">
+                                <span>{item.quantity || 0}x {item.product_name || 'Produto sem nome'}</span>
+                                <span className="text-gray-400">
+                                  {formatCurrency(item.subtotal || 0)}
+                                </span>
+                              </div>
+                            ))}
+                            {budget.orcamento_items && budget.orcamento_items.length > 3 && (
+                              <div className="text-sm text-gray-400">
+                                +{budget.orcamento_items.length - 3} produto(s)
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Orçamentos sem data de entrega */}
+          {budgetsWithoutDate.length > 0 && (
+            <div>
+              <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                Orçamentos Sem Data de Entrega
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {budgetsWithoutDate.map((budget) => {
+                  const deliveryStatus = getDeliveryStatus(budget.delivery_date);
+                  
+                  return (
+                    <Card key={budget.id} className="bg-crm-card border-crm-border hover:bg-crm-card/80 transition-colors border-yellow-500/30">
+                      <CardHeader className="pb-3">
+                        <div className="flex justify-between items-start">
+                          <CardTitle className="text-lg text-white">{budget.title}</CardTitle>
+                          <Badge className={deliveryStatus.color}>
+                            {getStatusText(deliveryStatus.status)}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center gap-2 text-gray-300">
+                          <User className="h-4 w-4" />
+                          <span className="font-medium">{budget.client_name}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 text-yellow-400">
+                          <AlertTriangle className="h-4 w-4" />
+                          <span>Data de entrega não definida</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 text-gray-300">
+                          <Package className="h-4 w-4" />
+                          <span>Quantidade: {getTotalQuantity(budget.orcamento_items)} itens</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 text-blue-400">
+                          <DollarSign className="h-4 w-4" />
+                          <span className="font-semibold">{formatCurrency(budget.total)}</span>
+                        </div>
+                        
+                        <div className="pt-2 border-t border-crm-border">
+                          <p className="text-gray-400 text-sm mb-2">Produtos:</p>
+                          <div className="space-y-1">
+                            {budget.orcamento_items?.slice(0, 3).map((item, index) => (
+                              <div key={index} className="text-sm text-gray-300 flex justify-between">
+                                <span>{item.quantity || 0}x {item.product_name || 'Produto sem nome'}</span>
+                                <span className="text-gray-400">
+                                  {formatCurrency(item.subtotal || 0)}
+                                </span>
+                              </div>
+                            ))}
+                            {budget.orcamento_items && budget.orcamento_items.length > 3 && (
+                              <div className="text-sm text-gray-400">
+                                +{budget.orcamento_items.length - 3} produto(s)
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
