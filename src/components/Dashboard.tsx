@@ -22,16 +22,13 @@ export function Dashboard() {
   });
 
   const { isPreloading } = useDataContext();
-
-  // Usa dados pré-carregados
   const { data: clientes = [] } = usePreloadedClients();
   const { data: orcamentos = [] } = usePreloadedBudgets();
   const { data: faturas = [] } = usePreloadedInvoices();
   const { data: despesas = [] } = usePreloadedExpenses();
 
-  // Pega o mês/ano atual para filtrar
   const currentDate = new Date();
-  const currentMonth = currentDate.getMonth() + 1; // JavaScript months are 0-based
+  const currentMonth = currentDate.getMonth() + 1;
   const currentYear = currentDate.getFullYear();
 
   const formatCurrency = (value: number) => {
@@ -47,17 +44,14 @@ export function Dashboard() {
   };
 
   const calculateDashboardData = () => {
-    // Calcular total de clientes
     const totalClientes = clientes.length;
 
-    // Calcular receitas do mês das FATURAS do mês atual
     const receitasFaturas = faturas
       .filter(fatura => isCurrentMonth(fatura.date))
       .reduce((total, fatura) => {
         return total + parseFloat(fatura.value?.toString() || '0');
       }, 0);
 
-    // Calcular receitas dos ORÇAMENTOS FINALIZADOS do mês atual
     const receitasOrcamentos = orcamentos
       .filter(orcamento => 
         orcamento.status === 'Finalizado' && 
@@ -67,23 +61,17 @@ export function Dashboard() {
         return total + parseFloat(orcamento.total?.toString() || '0');
       }, 0);
 
-    // Total de receitas = faturas + orçamentos finalizados
     const receitasTotal = receitasFaturas + receitasOrcamentos;
 
-    // Calcular despesas do mês atual
     const despesasTotal = despesas
       .filter(despesa => isCurrentMonth(despesa.date))
       .reduce((total, expense) => {
         return total + parseFloat(expense.value?.toString() || '0');
       }, 0);
 
-    // Contar orçamentos pendentes (status "Aguardando")
     const orcamentosPendentes = orcamentos.filter(budget => budget.status === 'Aguardando').length;
-
-    // Pegar os 2 clientes mais recentes
     const clientesRecentes = clientes.slice(0, 2);
 
-    // Criar atividades recentes baseadas nos orçamentos
     const atividadesRecentes = orcamentos.slice(0, 2).map(budget => ({
       title: budget.title || 'Orçamento',
       client: budget.client_name,
@@ -105,7 +93,6 @@ export function Dashboard() {
     calculateDashboardData();
   }, [clientes, orcamentos, despesas, faturas]);
 
-  // Se ainda está pré-carregando, mostra a tela de loading
   if (isPreloading) {
     return <LoadingScreen />;
   }
@@ -141,7 +128,6 @@ export function Dashboard() {
     <div className="p-6 bg-crm-dark min-h-screen">
       <h1 className="text-3xl font-bold text-white mb-8">Dashboard</h1>
       
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat) => (
           <Card key={stat.title} className="bg-crm-card border-crm-border">
@@ -160,9 +146,7 @@ export function Dashboard() {
         ))}
       </div>
 
-      {/* Bottom Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Clients */}
         <Card className="bg-crm-card border-crm-border">
           <CardContent className="p-6">
             <h3 className="text-xl font-semibold text-white mb-4">Clientes Recentes</h3>
@@ -186,7 +170,6 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
         <Card className="bg-crm-card border-crm-border">
           <CardContent className="p-6">
             <h3 className="text-xl font-semibold text-white mb-4">Atividade Recente</h3>

@@ -1,15 +1,13 @@
 
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, User, Package, DollarSign } from "lucide-react";
-import { format, isAfter, isSameDay, parseISO } from "date-fns";
+import { format, isAfter, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
 export function Agenda() {
-  // Fetch budgets with delivery dates from Supabase
   const { data: budgets = [], isLoading } = useQuery({
     queryKey: ['orcamentos-agenda'],
     queryFn: async () => {
@@ -36,7 +34,7 @@ export function Agenda() {
 
   const getDeliveryStatus = (deliveryDate: string) => {
     const today = new Date();
-    const delivery = new Date(deliveryDate + 'T00:00:00'); // Força horário local
+    const delivery = new Date(deliveryDate + 'T00:00:00');
     
     if (isSameDay(delivery, today)) {
       return { status: "hoje", color: "bg-yellow-600 text-white" };
@@ -48,7 +46,7 @@ export function Agenda() {
   };
 
   const formatDeliveryDate = (dateString: string) => {
-    const date = new Date(dateString + 'T00:00:00'); // Força horário local
+    const date = new Date(dateString + 'T00:00:00');
     return format(date, "dd/MM/yyyy", { locale: ptBR });
   };
 

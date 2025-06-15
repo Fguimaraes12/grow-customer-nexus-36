@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,13 +20,10 @@ export function Produtos() {
   const { isPreloading } = useDataContext();
   const queryClient = useQueryClient();
 
-  // Usa dados pré-carregados
   const { data: products = [], isLoading } = usePreloadedProducts();
 
-  // Create product mutation
   const createProductMutation = useMutation({
     mutationFn: async (productData: any) => {
-      // Convert price from formatted string to number
       const priceValue = typeof productData.price === 'string' 
         ? parseFloat(productData.price.replace('R$ ', '').replace('.', '').replace(',', '.'))
         : productData.price;
@@ -36,8 +34,6 @@ export function Produtos() {
         description: productData.description || null,
         category: productData.category || null
       };
-
-      console.log('Inserting product data:', dataToInsert);
 
       const { data, error } = await supabase
         .from('produtos')
@@ -54,10 +50,8 @@ export function Produtos() {
     }
   });
 
-  // Update product mutation
   const updateProductMutation = useMutation({
     mutationFn: async ({ id, ...productData }: any) => {
-      // Convert price from formatted string to number
       const priceValue = typeof productData.price === 'string' 
         ? parseFloat(productData.price.replace('R$ ', '').replace('.', '').replace(',', '.'))
         : productData.price;
@@ -68,8 +62,6 @@ export function Produtos() {
         description: productData.description || null,
         category: productData.category || null
       };
-
-      console.log('Updating product data:', dataToUpdate);
 
       const { data, error } = await supabase
         .from('produtos')
@@ -87,7 +79,6 @@ export function Produtos() {
     }
   });
 
-  // Delete product mutation
   const deleteProductMutation = useMutation({
     mutationFn: async (productId: string) => {
       const { error } = await supabase
@@ -117,7 +108,6 @@ export function Produtos() {
 
   const handleSaveProduct = async (productData: any) => {
     try {
-      console.log('Saving product:', productData);
       if (editingProduct) {
         await updateProductMutation.mutateAsync({ ...productData, id: editingProduct.id });
         setEditingProduct(null);
@@ -152,7 +142,6 @@ export function Produtos() {
     setModalOpen(true);
   };
 
-  // Se ainda está pré-carregando, mostra a tela de loading
   if (isPreloading || isLoading) {
     return <LoadingScreen />;
   }
@@ -167,7 +156,6 @@ export function Produtos() {
         </Button>
       </div>
 
-      {/* Search */}
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
         <Input
@@ -178,7 +166,6 @@ export function Produtos() {
         />
       </div>
 
-      {/* Products Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredProducts.map((product) => (
           <Card key={product.id} className="bg-crm-card border-crm-border">
@@ -213,7 +200,6 @@ export function Produtos() {
                 </div>
               </div>
 
-              {/* Description and Category */}
               <div className="space-y-2">
                 {product.description && (
                   <div>
