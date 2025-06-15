@@ -89,11 +89,24 @@ export function Dashboard() {
     const totalClientes = clientes.length;
 
     // Calcular receitas do mês das FATURAS do mês atual
-    const receitasTotal = faturas
+    const receitasFaturas = faturas
       .filter(fatura => isCurrentMonth(fatura.date))
       .reduce((total, fatura) => {
         return total + parseFloat(fatura.value?.toString() || '0');
       }, 0);
+
+    // Calcular receitas dos ORÇAMENTOS FINALIZADOS do mês atual
+    const receitasOrcamentos = orcamentos
+      .filter(orcamento => 
+        orcamento.status === 'Finalizado' && 
+        (isCurrentMonth(orcamento.date) || (orcamento.delivery_date && isCurrentMonth(orcamento.delivery_date)))
+      )
+      .reduce((total, orcamento) => {
+        return total + parseFloat(orcamento.total?.toString() || '0');
+      }, 0);
+
+    // Total de receitas = faturas + orçamentos finalizados
+    const receitasTotal = receitasFaturas + receitasOrcamentos;
 
     // Calcular despesas do mês atual
     const despesasTotal = despesas
