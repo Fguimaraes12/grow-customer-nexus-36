@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, User, Package, DollarSign, AlertTriangle } from "lucide-react";
@@ -24,7 +23,7 @@ export function Agenda() {
           )
         `)
         .eq('status', 'Aguardando')
-        .order('delivery_date', { ascending: true, nullsLast: true });
+        .order('delivery_date', { ascending: true, nullsFirst: false });
       
       if (error) throw error;
       return data;
